@@ -307,3 +307,14 @@ def VerPrestamos():
     print(tabulate(tabla, headers=["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"], tablefmt="grid"))
     
     MenuPrestamo()
+    
+
+def MenuRetorno():
+    # Aquí va el código para el menú de retorno
+    pass
+
+def MenuReportes():
+    # Aquí va el código para el menú de reportes
+    pass
+
+MenuPrincipal()
