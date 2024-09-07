@@ -1,47 +1,70 @@
 import random
-#import csv
-#import openpyxl
+import csv
+import openpyxl
 from datetime import datetime
 from tabulate import tabulate
 
+def main():
+    print('Hola, ¿cómo estás?')
+    print('Selecciona la opción que deseas realizar en este momento:')
+    MenuPrincipal()
 
-print('Hola, ¿cómo estás?')
-print('Selecciona la opción que deseas realizar en este momento:')
+def cargar_datos(nombre_archivo):
+    try:
+        with open(f"{nombre_archivo}.csv", 'r', newline='', encoding='utf-8') as archivo:
+            lector = csv.DictReader(archivo)
+            return list(lector)
+    except FileNotFoundError:
+        return []
 
-#Aqui van todas las listas que se usaran despues 
+def guardar_datos(nombre_archivo, datos, campos):
+    with open(f"{nombre_archivo}.csv", 'w', newline='', encoding='utf-8') as archivo:
+        escritor = csv.DictWriter(archivo, fieldnames=campos)
+        escritor.writeheader()
+        escritor.writerows(datos)
 
-unidades_registradas= []
-prestamos_registrados = []
-clientes_registrados = []
+# Cargar datos al inicio del programa
+unidades_registradas = cargar_datos("unidades")
+prestamos_registrados = cargar_datos("prestamos")
+clientes_registrados = cargar_datos("clientes")
 
+continuar = True
 
 def MenuPrincipal():
-    print('\n\t Menú Principal')
-    print('\t1. Registro')
-    print('\t2. Préstamo')
-    print('\t3. Retorno')
-    print('\t4. Reportes')
-    print('\t5. Salir')
+    global continuar  # Permite modificar la variable 'continuar'
+    while continuar:  # Se repite hasta que el usuario decida salir
+        print('\n\t Menú Principal')
+        print('\t1. Registro')
+        print('\t2. Préstamo')
+        print('\t3. Retorno')
+        print('\t4. Reportes')
+        print('\t5. Salir')
 
-    opcion = input('\nOpción deseada: ')
+        opcion = input('\nOpción deseada: ')
 
-    if opcion == '1':
-        MenuRegistro()
-    elif opcion == '2':
-        MenuPrestamo()
-    elif opcion == '3':
-        MenuRetorno()
-    elif opcion == '4':
-        MenuReportes()
-    elif opcion == '5':
-        if ConfirmarSalida():
-            print('\nGracias por usar el sistema. ¡Hasta luego!')
-            return
+        if opcion == '1':
+            MenuRegistro()
+        elif opcion == '2':
+            MenuPrestamo()
+        elif opcion == '3':
+            MenuRetorno()
+        elif opcion == '4':
+            MenuReportes()
+        elif opcion == '5':
+            if ConfirmarSalida():
+                print('\nGracias por usar el sistema. ¡Hasta luego!')
+                continuar = False  # Finaliza el ciclo, saliendo del programa
+            else:
+                continue  # Vuelve al menú principal si no se confirma la salida
         else:
-            MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-        MenuPrincipal()
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def GuardarYSalir():
+    guardar_datos("unidades", unidades_registradas, ["clave", "rodada"])
+    guardar_datos("prestamos", prestamos_registrados, ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"])
+    guardar_datos("clientes", clientes_registrados, ["clave_cliente", "apellidos", "nombres", "telefono"])
+    print('\nDatos guardados. Gracias por usar el sistema. ¡Hasta luego!')
+
 
 def ConfirmarSalida():
     """Función para confirmar si el usuario realmente quiere salir."""
@@ -75,75 +98,60 @@ def MenuRegistro():
 def MenuUnidad():
     print('\n¿Que deseas realizar?')
     print('\t1. Agregar nueva unidad')
-    print('\t2. Ver unidades')
-    print('\t3. Volver al Menú de Registro')
+    print('\t2. Volver al Menú de Registro')
 
     opcionUnidad = input('\nOpción deseada: ')
     
     if opcionUnidad == '1':
         RegistrarUnidad()
+        
     elif opcionUnidad == '2':
-        VerUnidad()
-    elif opcionUnidad == '3':
         MenuRegistro()
     else:
         print('\nOpción inválida. Por favor, selecciona una opción válida.')
         MenuUnidad()
 
 def RegistrarUnidad():
-    """ Aqui tengo un problema con que aunque ponga un numero incorrecto, sigue dando para adelante"""
+    
     # Generar clave única para la unidad
     clave = random.randint(1, 1000)
     
     # Solicitar la rodada de la bicicleta
     while True:
-        rodada = input("\nIngrese la rodada de la bicicleta (20, 26 o 29): ")
-        if rodada in ["20", "26", "29"]:
-            print("Rodada valida.")
-        else:
-            print("Rodada inválida. Por favor, ingrese 20, 26 o 29.")
+        try:
+            rodada = int(input("\nIngrese la rodada de la bicicleta (20, 26 o 29): "))
+            if rodada in [20, 26, 29]:
+                break
+            else:
+                print("Por favor, ingrese una rodada válida (20, 26 o 29).")
+        except ValueError:
+            print("Entrada no válida. Por favor, ingrese un número.")
             
                 
     # Guardar los datos de la unidad
-        unidad = {
-            "clave": clave,
-            "rodada": rodada
-        }
-        unidades_registradas.append(unidad)
+    unidad = {
+    "clave": clave,
+    "rodada": rodada
+    }
+    unidades_registradas.append(unidad)
         
-        print("\nSe ha registrado la siguiente unidad:")
-        print(f"Clave: {clave}")
-        print(f"Rodada: {rodada}")
-        print("\nRegistro de unidad completado.")
-        MenuUnidad()
+    print("\nSe ha registrado la siguiente unidad:")
+    print(f"Clave: {clave}")
+    print(f"Rodada: {rodada}")
+    print("\nRegistro de unidad completado.")
+    MenuUnidad()
 
-def VerUnidad():
-    print("\n\tListado de Unidades Registradas")
-    
-    if not unidades_registradas:
-        print("No se han registrado unidades.")
-        MenuUnidad()
-        return
-    
-    # Crear la tabla con la librería tabulate
-    tabla = [[unidad["clave"], unidad["rodada"]] for unidad in unidades_registradas]
-    print(tabulate(tabla, headers=["Clave", "Rodada"], tablefmt="grid"))
-    
-    MenuRegistro()
 
 def MenuCliente():
     print('\n¿Qué deseas realizar?')
     print('\t1. Registrar nuevo cliente')
-    print('\t2. Ver clientes')
-    print('\t3. Volver al Menú Principal')
+    print('\t2. Volver al Menú Principal')
 
     opcionCliente = input('\nOpción deseada: ')
     
     if opcionCliente == '1':
         RegistrarCliente()
     elif opcionCliente == '2':
-        VerClientes()
-    elif opcionCliente == '3':
         MenuPrincipal()
     else:
         print('\nOpción inválida. Por favor, selecciona una opción válida.')
@@ -189,19 +197,6 @@ def RegistrarCliente():
     print("\nCliente registrado con éxito:")
     print(tabulate([cliente.values()], headers=cliente.keys(), tablefmt="grid"))
 
-    MenuCliente()
-
-def VerClientes():
-    print("\n\tListado de Clientes Registrados")
-    
-    if not clientes_registrados:
-        print("No se han registrado clientes.")
-        MenuCliente()
-        return
-    
-    tabla = [[c["clave_cliente"], c["apellidos"], c["nombres"], c["telefono"]] for c in clientes_registrados]
-    print(tabulate(tabla, headers=["Clave Cliente", "Apellidos", "Nombres", "Teléfono"], tablefmt="grid"))
-    
     MenuCliente()
 
 
@@ -310,11 +305,174 @@ def VerPrestamos():
     
 
 def MenuRetorno():
-    # Aquí va el código para el menú de retorno
-    pass
+    print('\n\tMenú de Retorno')
+    print('\t1. Ver préstamos pendientes de retorno')
+    print('\t2. Registrar retorno')
+    print('\t3. Volver al Menú Principal')
+
+    opcionRetorno = input('\nOpción deseada: ')
+    
+    if opcionRetorno == '1':
+        MostrarPrestamosPendientes()
+    elif opcionRetorno == '2':
+        RegistrarRetorno()
+    elif opcionRetorno == '3':
+        MenuPrincipal()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        MenuRetorno()
+
+def MostrarPrestamosPendientes():
+    print("\n\tPréstamos Pendientes de Retorno")
+    
+    prestamos_pendientes = [p for p in prestamos_registrados if p["Fecha Retorno"] == ""]
+    
+    if not prestamos_pendientes:
+        print("No hay préstamos pendientes de retorno.")
+    else:
+        tabla = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"]] for p in prestamos_pendientes]
+        print(tabulate(tabla, headers=["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo"], tablefmt="grid"))
+    
+    MenuRetorno()
+
+def RegistrarRetorno():
+    folio = input("Ingrese el folio del préstamo a retornar: ")
+    
+    prestamo = next((p for p in prestamos_registrados if str(p["Folio"]) == folio), None)
+    
+    if prestamo is None:
+        print(f"No se encontró un préstamo con el folio {folio}.")
+        MenuRetorno()
+        return
+    
+    if prestamo["Fecha Retorno"] != "":
+        print(f"El préstamo con folio {folio} ya ha sido retornado.")
+        MenuRetorno()
+        return
+    
+    fecha_actual = datetime.now().strftime("%m-%d-%Y")
+    prestamo["Fecha Retorno"] = fecha_actual
+    
+    print(f"\nPréstamo con folio {folio} ha sido marcado como retornado en la fecha {fecha_actual}.")
+    print("\nDatos actualizados del préstamo:")
+    print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
+    
+    MenuRetorno()
+
+def ExportarReporte(datos, headers, nombre_archivo):
+    while True:
+        print("\n¿Desea exportar este reporte?")
+        print("1. Exportar como CSV")
+        print("2. Exportar como Excel")
+        print("3. No exportar")
+        
+        opcion = input("\nOpción deseada: ")
+        
+        if opcion == "1":
+            ExportarCSV(datos, headers, nombre_archivo)
+            break
+        elif opcion == "2":
+            ExportarExcel(datos, headers, nombre_archivo)
+            break
+        elif opcion == "3":
+            print("No se exportará el reporte.")
+            break
+        else:
+            print("Opción inválida. Por favor, seleccione una opción válida.")
+
+def ExportarCSV(datos, headers, nombre_archivo):
+    nombre_archivo = f"{nombre_archivo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    with open(nombre_archivo, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(headers)
+        writer.writerows(datos)
+    print(f"Reporte exportado como CSV: {nombre_archivo}")
+
+def ExportarExcel(datos, headers, nombre_archivo):
+    nombre_archivo = f"{nombre_archivo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(headers)
+    for row in datos:
+        ws.append(row)
+    wb.save(nombre_archivo)
+    print(f"Reporte exportado como Excel: {nombre_archivo}")
 
 def MenuReportes():
-    # Aquí va el código para el menú de reportes
-    pass
+    
+    print('\n\tMenú de Reportes')
+    print('\t1. Ver usuarios registrados')
+    print('\t2. Ver préstamos no devueltos')
+    print('\t3. Buscar préstamos por duración')
+    print('\t4. Volver al Menú Principal')
 
-MenuPrincipal()
+    opcion = input('\nOpción deseada: ')
+
+    if opcion == '1':
+        VerUsuariosRegistrados()
+    elif opcion == '2':
+        VerPrestamosNoDevueltos()
+    elif opcion == '3':
+        BuscarPrestamosPorDuracion()
+    elif opcion == '4':
+        MenuPrincipal()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def VerUsuariosRegistrados():
+    print("\n\tListado de Usuarios Registrados")
+    
+    if not clientes_registrados:
+        print("No hay usuarios registrados.")
+        return
+    
+    headers = ["Clave Cliente", "Apellidos", "Nombres", "Teléfono"]
+    datos = [[c["clave_cliente"], c["apellidos"], c["nombres"], c["telefono"]] for c in clientes_registrados]
+    
+    print(tabulate(datos, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "usuarios_registrados")
+
+def VerPrestamosNoDevueltos():
+    print("\n\tListado de Préstamos No Devueltos")
+    
+    prestamos_no_devueltos = [p for p in prestamos_registrados if p["Fecha Retorno"] == ""]
+    
+    if not prestamos_no_devueltos:
+        print("No hay préstamos pendientes de devolución.")
+        return
+    
+    headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo"]
+    datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"]] for p in prestamos_no_devueltos]
+    
+    print(tabulate(datos, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "prestamos_no_devueltos")
+
+def BuscarPrestamosPorDuracion():
+    while True:
+        dias = input("\nIngrese la cantidad de días de préstamo a buscar: ")
+        if dias.isdigit() and int(dias) > 0:
+            dias = int(dias)
+            break
+        else:
+            print("Por favor, ingrese un número entero positivo.")
+    
+    prestamos_encontrados = [p for p in prestamos_registrados if p["Días Prestamo"] == dias]
+    
+    if not prestamos_encontrados:
+        print(f"No se encontraron préstamos con duración de {dias} días.")
+        return
+    
+    print(f"\n\tListado de Préstamos con Duración de {dias} Días")
+    headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"]
+    datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]] for p in prestamos_encontrados]
+    
+    print(tabulate(datos, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, f"prestamos_duracion_{dias}_dias")
+
+
+
+if __name__ == "__main__":
+    main()
