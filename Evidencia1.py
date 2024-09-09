@@ -112,22 +112,22 @@ def MenuUnidad():
         MenuUnidad()
 
 def RegistrarUnidad():
+    print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
     
     # Generar clave única para la unidad
     clave = random.randint(1, 1000)
     
     # Solicitar la rodada de la bicicleta
     while True:
-        try:
-            rodada = int(input("\nIngrese la rodada de la bicicleta (20, 26 o 29): "))
-            if rodada in [20, 26, 29]:
-                break
-            else:
-                print("Por favor, ingrese una rodada válida (20, 26 o 29).")
-        except ValueError:
-            print("Entrada no válida. Por favor, ingrese un número.")
-            
-                
+        rodada = input("\nIngrese la rodada de la bicicleta (20, 26 o 29): ")
+        if rodada.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuUnidad()
+        if rodada in ["20", "26", "29"]:
+            print("Rodada valida.")
+            break
+        else:
+            print("Rodada inválida. Por favor, ingrese 20, 26 o 29.")
     # Guardar los datos de la unidad
     unidad = {
     "clave": clave,
@@ -158,13 +158,16 @@ def MenuCliente():
         MenuCliente()
 
 def RegistrarCliente():
-    """Función para registrar un nuevo cliente con las restricciones especificadas."""
+    print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
 
     clave_cliente = random.randint(1, 1000)
 
     # Validar apellidos
     while True:
         apellidos = input("Ingrese los apellidos del cliente (máximo 40 caracteres): ")
+        if apellidos.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuCliente()
         if 1 <= len(apellidos) <= 40:
             break
         else:
@@ -173,6 +176,9 @@ def RegistrarCliente():
     # Validar nombres
     while True:
         nombres = input("Ingrese los nombres del cliente (máximo 40 caracteres): ")
+        if nombres.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuCliente()
         if 1 <= len(nombres) <= 40:
             break
         else:
@@ -181,6 +187,9 @@ def RegistrarCliente():
     # Validar teléfono
     while True:
         telefono = input("Ingrese el número de teléfono del cliente (10 dígitos): ")
+        if telefono.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuCliente()
         if telefono.isdigit() and len(telefono) == 10:
             break
         else:
@@ -219,13 +228,16 @@ def MenuPrestamo():
         MenuPrestamo()
 
 def RegistrarPrestamo():
-    """Función para registrar un préstamo con las restricciones adicionales."""
+    print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
 
     folio = random.randint(1, 1000)
     
     # Validar clave de la unidad
     while True:
         clave_unidad = input("Ingrese la clave de la unidad (número entero mayor a cero): ")
+        if clave_unidad.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuPrestamo()
         if clave_unidad.isdigit() and int(clave_unidad) > 0:
             clave_unidad = int(clave_unidad)
             if any(unidad['clave'] == clave_unidad for unidad in unidades_registradas):
@@ -238,6 +250,9 @@ def RegistrarPrestamo():
     # Validar clave del cliente
     while True:
         clave_cliente = input("Ingrese la clave del cliente (número entero mayor a cero): ")
+        if clave_cliente.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuPrestamo()
         if clave_cliente.isdigit() and int(clave_cliente) > 0:
             clave_cliente = int(clave_cliente)
             if any(cliente['clave_cliente'] == clave_cliente for cliente in clientes_registrados):
@@ -251,6 +266,9 @@ def RegistrarPrestamo():
     fecha_actual = datetime.now().strftime("%m-%d-%Y")
     while True:
         fecha_prestamo = input(f"Ingrese la fecha del préstamo (por defecto {fecha_actual} o formato mm-dd-aaaa): ")
+        if fecha_prestamo.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuPrestamo()
         if fecha_prestamo == "":
             fecha_prestamo = fecha_actual
             break
@@ -268,6 +286,9 @@ def RegistrarPrestamo():
     # Validar cantidad de días del préstamo
     while True:
         dias_prestamo = input("Ingrese la cantidad de días del préstamo (entre 1 y 14 días): ")
+        if dias_prestamo.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuPrestamo()
         if dias_prestamo.isdigit() and 1 <= int(dias_prestamo) <= 14:
             dias_prestamo = int(dias_prestamo)
             break
@@ -290,6 +311,7 @@ def RegistrarPrestamo():
     print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
 
     MenuPrestamo()
+
 
 def VerPrestamos():
     print("\n\tListado de Préstamos Registrados")
