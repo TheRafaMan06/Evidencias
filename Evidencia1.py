@@ -53,6 +53,7 @@ def MenuPrincipal():
         elif opcion == '5':
             if ConfirmarSalida():
                 print('\nGracias por usar el sistema. ¡Hasta luego!')
+                GuardarYSalir()
                 continuar = False  # Finaliza el ciclo, saliendo del programa
             else:
                 continue  # Vuelve al menú principal si no se confirma la salida
