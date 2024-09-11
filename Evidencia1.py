@@ -415,9 +415,28 @@ def ExportarExcel(datos, headers, nombre_archivo):
     nombre_archivo = f"{nombre_archivo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
     wb = openpyxl.Workbook()
     ws = wb.active
+    
+    # Añadir encabezados
     ws.append(headers)
+    
+    # Añadir datos
     for row in datos:
         ws.append(row)
+    
+    # Ajustar automáticamente el tamaño de las columnas
+    for col in ws.columns:
+        max_length = 0
+        column = col[0].column_letter  # Obtener la letra de la columna
+        for cell in col:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))  # Medir la longitud del valor
+            except:
+                pass
+        adjusted_width = (max_length + 2)  # Ajustar el ancho con un pequeño margen
+        ws.column_dimensions[column].width = adjusted_width
+
+    # Guardar el archivo
     wb.save(nombre_archivo)
     print(f"Reporte exportado como Excel: {nombre_archivo}")
 
