@@ -169,22 +169,22 @@ def RegistrarCliente():
         if apellidos.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if 1 <= len(apellidos) <= 40:
+        if apellidos.replace(" ", "").isalpha() and 1 <= len(apellidos) <= 40:
             break
         else:
-            print("Apellidos inválidos. Deben contener entre 1 y 40 caracteres.")
-    
+            print("Apellidos inválidos. Deben contener solo letras y espacios, y tener entre 1 y 40 caracteres.")
+
     # Validar nombres
     while True:
         nombres = input("Ingrese los nombres del cliente (máximo 40 caracteres): ")
         if nombres.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if 1 <= len(nombres) <= 40:
+        if nombres.replace(" ", "").isalpha() and 1 <= len(nombres) <= 40:
             break
         else:
-            print("Nombres inválidos. Deben contener entre 1 y 40 caracteres.")
-    
+            print("Nombres inválidos. Deben contener solo letras y espacios, y tener entre 1 y 40 caracteres.")
+        
     # Validar teléfono
     while True:
         telefono = input("Ingrese el número de teléfono del cliente (10 dígitos): ")
