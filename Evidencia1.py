@@ -1,4 +1,3 @@
-import random
 import csv
 import openpyxl
 from datetime import datetime
@@ -13,15 +12,28 @@ def cargar_datos(nombre_archivo):
     try:
         with open(f"{nombre_archivo}.csv", 'r', newline='', encoding='utf-8') as archivo:
             lector = csv.DictReader(archivo)
-            return list(lector)
+            datos = list(lector)
+            # Asegurarse de que las claves sean cadenas de 3 dígitos
+            for dato in datos:
+                for clave in ['clave', 'clave_cliente', 'Folio']:
+                    if clave in dato:
+                        dato[clave] = f"{int(dato[clave]):03d}"
+                # Convertir otros campos numéricos a enteros
+                for clave in ['Clave Unidad', 'Clave Cliente', 'Días Prestamo']:
+                    if clave in dato and dato[clave].isdigit():
+                        dato[clave] = int(dato[clave])
+            return datos
     except FileNotFoundError:
+        print(f"Archivo {nombre_archivo}.csv no encontrado. Se creará uno nuevo.")
         return []
 
 def guardar_datos(nombre_archivo, datos, campos):
     with open(f"{nombre_archivo}.csv", 'w', newline='', encoding='utf-8') as archivo:
         escritor = csv.DictWriter(archivo, fieldnames=campos)
         escritor.writeheader()
-        escritor.writerows(datos)
+        for fila in datos:
+            fila_str = {k: str(v) for k, v in fila.items()}  # Convertir todos los valores a cadenas
+            escritor.writerow(fila_str)
 
 # Cargar datos al inicio del programa
 unidades_registradas = cargar_datos("unidades")
@@ -61,11 +73,13 @@ def MenuPrincipal():
             print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def GuardarYSalir():
+    guardar_todos_los_datos()
+    print('\nDatos guardados. Gracias por usar el sistema. ¡Hasta luego!')
+
+def guardar_todos_los_datos():
     guardar_datos("unidades", unidades_registradas, ["clave", "rodada"])
     guardar_datos("prestamos", prestamos_registrados, ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"])
     guardar_datos("clientes", clientes_registrados, ["clave_cliente", "apellidos", "nombres", "telefono"])
-    print('\nDatos guardados. Gracias por usar el sistema. ¡Hasta luego!')
-
 
 def ConfirmarSalida():
     """Función para confirmar si el usuario realmente quiere salir."""
@@ -77,6 +91,13 @@ def ConfirmarSalida():
             return False
         else:
             print("Opción inválida. Por favor, ingresa 's' para sí o 'n' para no.")
+
+def generar_siguiente_clave(lista_datos, clave_campo):
+    if not lista_datos:
+        return "001"
+    claves_existentes = [int(item[clave_campo]) for item in lista_datos]
+    siguiente_numero = max(claves_existentes) + 1
+    return f"{siguiente_numero:03d}"
 
 def MenuRegistro():
     print('\nEn este momento estás en Registro, ¿qué deseas hacer?')
@@ -116,7 +137,7 @@ def RegistrarUnidad():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
     
     # Generar clave única para la unidad
-    clave = random.randint(1, 1000)
+    clave = generar_siguiente_clave(unidades_registradas, "clave")
     
     # Solicitar la rodada de la bicicleta
     while True:
@@ -135,6 +156,7 @@ def RegistrarUnidad():
     "rodada": rodada
     }
     unidades_registradas.append(unidad)
+    guardar_todos_los_datos()
         
     print("\nSe ha registrado la siguiente unidad:")
     print(f"Clave: {clave}")
@@ -161,7 +183,7 @@ def MenuCliente():
 def RegistrarCliente():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
 
-    clave_cliente = random.randint(1, 1000)
+    clave_cliente = generar_siguiente_clave(clientes_registrados, "clave_cliente")
 
     # Validar apellidos
     while True:
@@ -169,22 +191,22 @@ def RegistrarCliente():
         if apellidos.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if apellidos.replace(" ", "").isalpha() and 1 <= len(apellidos) <= 40:
+        if 1 <= len(apellidos) <= 40:
             break
         else:
-            print("Apellidos inválidos. Deben contener solo letras y espacios, y tener entre 1 y 40 caracteres.")
-
+            print("Apellidos inválidos. Deben contener entre 1 y 40 caracteres.")
+    
     # Validar nombres
     while True:
         nombres = input("Ingrese los nombres del cliente (máximo 40 caracteres): ")
         if nombres.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if nombres.replace(" ", "").isalpha() and 1 <= len(nombres) <= 40:
+        if 1 <= len(nombres) <= 40:
             break
         else:
-            print("Nombres inválidos. Deben contener solo letras y espacios, y tener entre 1 y 40 caracteres.")
-        
+            print("Nombres inválidos. Deben contener entre 1 y 40 caracteres.")
+    
     # Validar teléfono
     while True:
         telefono = input("Ingrese el número de teléfono del cliente (10 dígitos): ")
@@ -203,6 +225,7 @@ def RegistrarCliente():
         "telefono": telefono
     }
     clientes_registrados.append(cliente)
+    guardar_todos_los_datos()
     
     print("\nCliente registrado con éxito:")
     print(tabulate([cliente.values()], headers=cliente.keys(), tablefmt="grid"))
@@ -231,7 +254,7 @@ def MenuPrestamo():
 def RegistrarPrestamo():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
 
-    folio = random.randint(1, 1000)
+    folio = generar_siguiente_clave(prestamos_registrados, "Folio")
     
     # Validar clave de la unidad
     while True:
@@ -307,6 +330,7 @@ def RegistrarPrestamo():
         "Fecha Retorno": fecha_retorno
     }
     prestamos_registrados.append(prestamo)
+    guardar_todos_los_datos()
     
     print("\nDatos del préstamo registrado:")
     print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
@@ -375,6 +399,8 @@ def RegistrarRetorno():
     
     fecha_actual = datetime.now().strftime("%m-%d-%Y")
     prestamo["Fecha Retorno"] = fecha_actual
+    
+    guardar_todos_los_datos()
     
     print(f"\nPréstamo con folio {folio} ha sido marcado como retornado en la fecha {fecha_actual}.")
     print("\nDatos actualizados del préstamo:")
