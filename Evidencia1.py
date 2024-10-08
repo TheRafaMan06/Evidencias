@@ -236,16 +236,13 @@ def RegistrarCliente():
 def MenuPrestamo():
     print('\n¿Que deseas realizar?')
     print('\t1. Registrar un nuevo préstamo')
-    print('\t2. Ver préstamos registrados')
-    print('\t3. Volver al Menú Principal')
+    print('\t2. Volver al Menú Principal')  # Eliminé la opción "Ver préstamos registrados"
 
     opcionPrestamo = input('\nOpción deseada: ')
     
     if opcionPrestamo == '1':
         RegistrarPrestamo()
     elif opcionPrestamo == '2':
-        VerPrestamos()
-    elif opcionPrestamo == '3':
         MenuPrincipal()
     else:
         print('\nOpción inválida. Por favor, selecciona una opción válida.')
@@ -256,6 +253,14 @@ def RegistrarPrestamo():
 
     folio = generar_siguiente_clave(prestamos_registrados, "Folio")
     
+    # Mostrar unidades disponibles antes de pedir la clave de unidad
+    print("\nUnidades disponibles para préstamo:")
+    if not unidades_registradas:
+        print("No hay unidades registradas.")
+    else:
+        for unidad in unidades_registradas:
+            print(f"Clave: {unidad['clave']} - Rodada: {unidad['rodada']}")
+
     # Validar clave de la unidad
     while True:
         clave_unidad = input("Ingrese la clave de la unidad (número entero mayor a cero): ")
@@ -517,29 +522,47 @@ def VerPrestamosNoDevueltos():
     
     ExportarReporte(datos, headers, "prestamos_no_devueltos")
 
-def BuscarPrestamosPorDuracion():
+def BuscarPrestamosPorFechas():
+    # Solicitar fechas de inicio y retorno
     while True:
-        dias = input("\nIngrese la cantidad de días de préstamo a buscar: ")
-        if dias.isdigit() and int(dias) > 0:
-            dias = int(dias)
+        fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato YYYY-MM-DD): ")
+        try:
+            fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
             break
-        else:
-            print("Por favor, ingrese un número entero positivo.")
-    
-    prestamos_encontrados = [p for p in prestamos_registrados if p["Días Prestamo"] == dias]
-    
+        except ValueError:
+            print("Formato de fecha inválido. Intente de nuevo.")
+
+    while True:
+        fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato YYYY-MM-DD): ")
+        try:
+            fecha_retorno = datetime.strptime(fecha_retorno, "%Y-%m-%d")
+            if fecha_retorno >= fecha_inicio:
+                break
+            else:
+                print("La fecha de retorno no puede ser anterior a la fecha de inicio.")
+        except ValueError:
+            print("Formato de fecha inválido. Intente de nuevo.")
+
+    # Filtrar los préstamos que se encuentren dentro del rango de fechas
+    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%Y-%m-%d") <= fecha_retorno]
+
     if not prestamos_encontrados:
-        print(f"No se encontraron préstamos con duración de {dias} días.")
+        print(f"No se encontraron préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}.")
         return
     
-    print(f"\n\tListado de Préstamos con Duración de {dias} Días")
+    # Mostrar los préstamos encontrados
+    print(f"\n\tListado de Préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}")
     headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"]
     datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]] for p in prestamos_encontrados]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
-    ExportarReporte(datos, headers, f"prestamos_duracion_{dias}_dias")
+    # Exportar el reporte si es necesario
+    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.date()}_a_{fecha_retorno.date()}")
 
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
