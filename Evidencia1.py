@@ -1,6 +1,6 @@
 import csv
 import openpyxl
-from datetime import datetime
+from datetime import datetime, timedelta
 from tabulate import tabulate
 
 def main():
@@ -8,17 +8,33 @@ def main():
     print('Selecciona la opción que deseas realizar en este momento:')
     MenuPrincipal()
 
+# Inicializar la ruta como una lista vacía
+ruta_actual = []
+
+def mostrar_ruta():
+    print(" > ".join(ruta_actual))
+
+def actualizar_ruta(nuevo_menu):
+    global ruta_actual
+    if nuevo_menu == "Menú Principal":
+        ruta_actual = ["Menú Principal"]
+    elif nuevo_menu in ruta_actual:
+        # Si volvemos a un menú anterior, cortamos la ruta hasta ese punto
+        index = ruta_actual.index(nuevo_menu)
+        ruta_actual = ruta_actual[:index + 1]
+    else:
+        ruta_actual.append(nuevo_menu)
+
+# Actualizar la estructura de datos de unidades
 def cargar_datos(nombre_archivo):
     try:
         with open(f"{nombre_archivo}.csv", 'r', newline='', encoding='utf-8') as archivo:
             lector = csv.DictReader(archivo)
             datos = list(lector)
-            # Asegurarse de que las claves sean cadenas de 3 dígitos
             for dato in datos:
                 for clave in ['clave', 'clave_cliente', 'Folio']:
                     if clave in dato:
                         dato[clave] = f"{int(dato[clave]):03d}"
-                # Convertir otros campos numéricos a enteros
                 for clave in ['Clave Unidad', 'Clave Cliente', 'Días Prestamo']:
                     if clave in dato and dato[clave].isdigit():
                         dato[clave] = int(dato[clave])
@@ -27,13 +43,15 @@ def cargar_datos(nombre_archivo):
         print(f"Archivo {nombre_archivo}.csv no encontrado. Se creará uno nuevo.")
         return []
 
+# Actualizar la función para guardar datos
 def guardar_datos(nombre_archivo, datos, campos):
     with open(f"{nombre_archivo}.csv", 'w', newline='', encoding='utf-8') as archivo:
         escritor = csv.DictWriter(archivo, fieldnames=campos)
         escritor.writeheader()
         for fila in datos:
-            fila_str = {k: str(v) for k, v in fila.items()}  # Convertir todos los valores a cadenas
+            fila_str = {k: str(v) for k, v in fila.items()}
             escritor.writerow(fila_str)
+
 
 # Cargar datos al inicio del programa
 unidades_registradas = cargar_datos("unidades")
@@ -43,8 +61,11 @@ clientes_registrados = cargar_datos("clientes")
 continuar = True
 
 def MenuPrincipal():
-    global continuar  # Permite modificar la variable 'continuar'
-    while continuar:  # Se repite hasta que el usuario decida salir
+    global continuar
+    actualizar_ruta("Menú Principal")
+    while continuar:
+        print('\n')
+        mostrar_ruta()
         print('\n\t Menú Principal')
         print('\t1. Registro')
         print('\t2. Préstamo')
@@ -66,9 +87,9 @@ def MenuPrincipal():
             if ConfirmarSalida():
                 print('\nGracias por usar el sistema. ¡Hasta luego!')
                 GuardarYSalir()
-                continuar = False  # Finaliza el ciclo, saliendo del programa
+                continuar = False
             else:
-                continue  # Vuelve al menú principal si no se confirma la salida
+                continue
         else:
             print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
@@ -77,7 +98,7 @@ def GuardarYSalir():
     print('\nDatos guardados. Gracias por usar el sistema. ¡Hasta luego!')
 
 def guardar_todos_los_datos():
-    guardar_datos("unidades", unidades_registradas, ["clave", "rodada"])
+    guardar_datos("unidades", unidades_registradas, ["clave", "rodada", "color"])
     guardar_datos("prestamos", prestamos_registrados, ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"])
     guardar_datos("clientes", clientes_registrados, ["clave_cliente", "apellidos", "nombres", "telefono"])
 
@@ -99,61 +120,96 @@ def generar_siguiente_clave(lista_datos, clave_campo):
     siguiente_numero = max(claves_existentes) + 1
     return f"{siguiente_numero:03d}"
 
-def MenuRegistro():
-    print('\nEn este momento estás en Registro, ¿qué deseas hacer?')
-    print('\t1. Unidades')
-    print('\t2. Clientes')
-    print('\t3. Volver al Menú Principal')
-
-    opcionRegistro = input('\nOpción deseada: ')
-
-    if opcionRegistro == '1':
-        MenuUnidad()
-    elif opcionRegistro == '2':
-        MenuCliente()
-    elif opcionRegistro == '3':
-        MenuPrincipal()
+def mostrar_catalogo_unidades():
+    print("\nCatálogo de Unidades:")
+    if not unidades_registradas:
+        print("No hay unidades registradas.")
     else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-        MenuRegistro()
+        for unidad in unidades_registradas:
+            print(f"Clave: {unidad['clave']} - Rodada: {unidad['rodada']} - Color: {unidad['color']}")
+
+def mostrar_catalogo_clientes():
+    print("\nCatálogo de Clientes:")
+    if not clientes_registrados:
+        print("No hay clientes registrados.")
+    else:
+        for cliente in clientes_registrados:
+            print(f"Clave: {cliente['clave_cliente']} - Nombre: {cliente['nombres']} {cliente['apellidos']}")
+
+def MenuRegistro():
+    actualizar_ruta("Registro")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n¿Qué deseas hacer?')
+        print('\t1. Unidades')
+        print('\t2. Clientes')
+        print('\t3. Volver al Menú Principal')
+
+        opcionRegistro = input('\nOpción deseada: ')
+
+        if opcionRegistro == '1':
+            MenuUnidad()
+        elif opcionRegistro == '2':
+            MenuCliente()
+        elif opcionRegistro == '3':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
 
 def MenuUnidad():
-    print('\n¿Que deseas realizar?')
-    print('\t1. Agregar nueva unidad')
-    print('\t2. Volver al Menú de Registro')
+    actualizar_ruta("Unidades")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n¿Qué deseas realizar?')
+        print('\t1. Agregar nueva unidad')
+        print('\t2. Volver al Menú de Registro')
 
-    opcionUnidad = input('\nOpción deseada: ')
-    
-    if opcionUnidad == '1':
-        RegistrarUnidad()
+        opcionUnidad = input('\nOpción deseada: ')
         
-    elif opcionUnidad == '2':
-        MenuRegistro()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-        MenuUnidad()
+        if opcionUnidad == '1':
+            RegistrarUnidad()
+        elif opcionUnidad == '2':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def RegistrarUnidad():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
     
-    # Generar clave única para la unidad
     clave = generar_siguiente_clave(unidades_registradas, "clave")
     
-    # Solicitar la rodada de la bicicleta
     while True:
         rodada = input("\nIngrese la rodada de la bicicleta (20, 26 o 29): ")
         if rodada.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuUnidad()
         if rodada in ["20", "26", "29"]:
-            print("Rodada valida.")
+            print("Rodada válida.")
             break
         else:
             print("Rodada inválida. Por favor, ingrese 20, 26 o 29.")
-    # Guardar los datos de la unidad
+    
+    while True:
+        color = input("\nIngrese el color de la bicicleta (máximo 15 caracteres): ")
+        if color.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuUnidad()
+        if not color.isalpha():
+            print('No se permiten números, solo datos tipo texto.')
+            continue
+        if 1 <= len(color) <= 15:
+            print("Color válido.")
+            break
+        else:
+            print("Color inválido. Debe tener entre 1 y 15 caracteres.")
+    
     unidad = {
-    "clave": clave,
-    "rodada": rodada
+        "clave": clave,
+        "rodada": rodada,
+        "color": color
     }
     unidades_registradas.append(unidad)
     guardar_todos_los_datos()
@@ -161,6 +217,7 @@ def RegistrarUnidad():
     print("\nSe ha registrado la siguiente unidad:")
     print(f"Clave: {clave}")
     print(f"Rodada: {rodada}")
+    print(f"Color: {color}")
     print("\nRegistro de unidad completado.")
     MenuUnidad()
 
@@ -234,32 +291,30 @@ def RegistrarCliente():
 
 
 def MenuPrestamo():
-    print('\n¿Que deseas realizar?')
-    print('\t1. Registrar un nuevo préstamo')
-    print('\t2. Volver al Menú Principal')  # Eliminé la opción "Ver préstamos registrados"
+    actualizar_ruta("Préstamo")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n¿Qué deseas realizar?')
+        print('\t1. Registrar un nuevo préstamo')
+        print('\t2. Volver al Menú Principal')
 
-    opcionPrestamo = input('\nOpción deseada: ')
-    
-    if opcionPrestamo == '1':
-        RegistrarPrestamo()
-    elif opcionPrestamo == '2':
-        MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-        MenuPrestamo()
+        opcionPrestamo = input('\nOpción deseada: ')
+        
+        if opcionPrestamo == '1':
+            RegistrarPrestamo()
+        elif opcionPrestamo == '2':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def RegistrarPrestamo():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
 
     folio = generar_siguiente_clave(prestamos_registrados, "Folio")
     
-    # Mostrar unidades disponibles antes de pedir la clave de unidad
-    print("\nUnidades disponibles para préstamo:")
-    if not unidades_registradas:
-        print("No hay unidades registradas.")
-    else:
-        for unidad in unidades_registradas:
-            print(f"Clave: {unidad['clave']} - Rodada: {unidad['rodada']}")
+    #Esta funcion 
+    mostrar_catalogo_unidades()
 
     # Validar clave de la unidad
     while True:
@@ -275,6 +330,9 @@ def RegistrarPrestamo():
                 print("Clave de unidad no encontrada. Por favor, ingrese una clave de unidad registrada.")
         else:
             print("Clave de unidad inválida. Debe ser un número entero mayor a cero.")
+    
+    # Mostrar catálogo de clientes antes de pedir la clave del cliente
+    mostrar_catalogo_clientes()
     
     # Validar clave del cliente
     while True:
@@ -357,22 +415,25 @@ def VerPrestamos():
     
 
 def MenuRetorno():
-    print('\n\tMenú de Retorno')
-    print('\t1. Ver préstamos pendientes de retorno')
-    print('\t2. Registrar retorno')
-    print('\t3. Volver al Menú Principal')
+    actualizar_ruta("Retorno")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tMenú de Retorno')
+        print('\t1. Ver préstamos pendientes de retorno')
+        print('\t2. Registrar retorno')
+        print('\t3. Volver al Menú Principal')
 
-    opcionRetorno = input('\nOpción deseada: ')
-    
-    if opcionRetorno == '1':
-        MostrarPrestamosPendientes()
-    elif opcionRetorno == '2':
-        RegistrarRetorno()
-    elif opcionRetorno == '3':
-        MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-        MenuRetorno()
+        opcionRetorno = input('\nOpción deseada: ')
+        
+        if opcionRetorno == '1':
+            MostrarPrestamosPendientes()
+        elif opcionRetorno == '2':
+            RegistrarRetorno()
+        elif opcionRetorno == '3':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def MostrarPrestamosPendientes():
     print("\n\tPréstamos Pendientes de Retorno")
@@ -388,6 +449,9 @@ def MostrarPrestamosPendientes():
     MenuRetorno()
 
 def RegistrarRetorno():
+
+    MostrarPrestamosPendientes()
+
     folio = input("Ingrese el folio del préstamo a retornar: ")
     
     prestamo = next((p for p in prestamos_registrados if str(p["Folio"]) == folio), None)
@@ -472,25 +536,160 @@ def ExportarExcel(datos, headers, nombre_archivo):
     print(f"Reporte exportado como Excel: {nombre_archivo}")
 
 def MenuReportes():
+    actualizar_ruta("Reportes")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tMenú de Reportes')
+        print('\t1. Ver usuarios registrados')
+        print('\t2. Ver préstamos no devueltos')
+        print('\t3. Buscar préstamos por duración')
+        print('\t4. Listado de unidades')
+        print('\t5. Reporte de retrasos')
+        print('\t6. Volver al Menú Principal')
+
+        opcion = input('\nOpción deseada: ')
+
+        if opcion == '1':
+            VerUsuariosRegistrados()
+        elif opcion == '2':
+            VerPrestamosNoDevueltos()
+        elif opcion == '3':
+            BuscarPrestamosPorFechas()
+        elif opcion == '4':
+            MenuListadoUnidades()
+        elif opcion == '5':
+            ReporteRetrasos()
+        elif opcion == '6':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def ReporteRetrasos():
+    print("\n\tReporte de Préstamos con Retraso")
     
-    print('\n\tMenú de Reportes')
-    print('\t1. Ver usuarios registrados')
-    print('\t2. Ver préstamos no devueltos')
-    print('\t3. Buscar préstamos por duración')
-    print('\t4. Volver al Menú Principal')
+    fecha_actual = datetime.now()
+    prestamos_retrasados = []
 
-    opcion = input('\nOpción deseada: ')
+    for prestamo in prestamos_registrados:
+        fecha_prestamo = datetime.strptime(prestamo["Fecha Prestamo"], "%m-%d-%Y")
+        fecha_debida = fecha_prestamo + timedelta(days=int(prestamo["Días Prestamo"]))
+        
+        if prestamo["Fecha Retorno"] == "":
+            dias_retraso = (fecha_actual - fecha_debida).days
+        else:
+            fecha_retorno = datetime.strptime(prestamo["Fecha Retorno"], "%m-%d-%Y")
+            dias_retraso = (fecha_retorno - fecha_debida).days
 
-    if opcion == '1':
-        VerUsuariosRegistrados()
-    elif opcion == '2':
-        VerPrestamosNoDevueltos()
-    elif opcion == '3':
-        BuscarPrestamosPorDuracion()
-    elif opcion == '4':
-        MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        if dias_retraso > 0:
+            unidad = next((u for u in unidades_registradas if u["clave"] == prestamo["Clave Unidad"]), None)
+            cliente = next((c for c in clientes_registrados if c["clave_cliente"] == prestamo["Clave Cliente"]), None)
+            
+            prestamos_retrasados.append({
+                "Días de retraso": dias_retraso,
+                "Fecha de retorno": prestamo["Fecha Retorno"] if prestamo["Fecha Retorno"] != "" else "No retornado",
+                "Fecha en que se debió haber retornado": fecha_debida.strftime("%m-%d-%Y"),
+                "Clave de unidad": prestamo["Clave Unidad"],
+                "Rodada": unidad["rodada"] if unidad else "N/A",
+                "Color": unidad["color"] if unidad else "N/A",
+                "Nombre completo del cliente": f"{cliente['nombres']} {cliente['apellidos']}" if cliente else "N/A",
+                "Teléfono de contacto": cliente["telefono"] if cliente else "N/A"
+            })
+
+    if not prestamos_retrasados:
+        print("No hay préstamos con retraso.")
+        return
+
+    prestamos_retrasados.sort(key=lambda x: x["Días de retraso"], reverse=True)
+
+    headers = ["Días de retraso", "Fecha de retorno", "Fecha en que se debió haber retornado", 
+               "Clave de unidad", "Rodada", "Color", "Nombre completo del cliente", "Teléfono de contacto"]
+    
+    datos = [[p[h] for h in headers] for p in prestamos_retrasados]
+    
+    print(tabulate(datos, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "reporte_prestamos_retrasados")
+
+def MenuListadoUnidades():
+    actualizar_ruta("Listado de Unidades")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tListado de Unidades')
+        print('\t1. Completo')
+        print('\t2. Por rodada')
+        print('\t3. Por color')
+        print('\t4. Volver al Menú de Reportes')
+
+        opcion = input('\nOpción deseada: ')
+
+        if opcion == '1':
+            ListadoUnidadesCompleto()
+        elif opcion == '2':
+            ListadoUnidadesPorRodada()
+        elif opcion == '3':
+            ListadoUnidadesPorColor()
+        elif opcion == '4':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def ListadoUnidadesCompleto():
+    print("\n\tListado Completo de Unidades")
+    
+    if not unidades_registradas:
+        print("No hay unidades registradas.")
+        return
+
+    headers = ["Clave", "Rodada", "Color"]
+    datos = [[u["clave"], u["rodada"], u["color"]] for u in unidades_registradas]
+    
+    print(tabulate(datos, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "listado_unidades_completo")
+
+def ListadoUnidadesPorRodada():
+    print("\n\tListado de Unidades por Rodada")
+    
+    if not unidades_registradas:
+        print("No hay unidades registradas.")
+        return
+
+    rodadas = sorted(set(u["rodada"] for u in unidades_registradas))
+    
+    headers = ["Clave", "Rodada", "Color"]
+    datos = []
+    
+    for rodada in rodadas:
+        print(f"\nRodada: {rodada}")
+        unidades_rodada = [u for u in unidades_registradas if u["rodada"] == rodada]
+        datos_rodada = [[u["clave"], u["rodada"], u["color"]] for u in unidades_rodada]
+        datos.extend(datos_rodada)
+        print(tabulate(datos_rodada, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "listado_unidades_por_rodada")
+
+def ListadoUnidadesPorColor():
+    print("\n\tListado de Unidades por Color")
+    
+    if not unidades_registradas:
+        print("No hay unidades registradas.")
+        return
+
+    colores = sorted(set(u["color"] for u in unidades_registradas))
+    
+    headers = ["Clave", "Rodada", "Color"]
+    datos = []
+    
+    for color in colores:
+        print(f"\nColor: {color}")
+        unidades_color = [u for u in unidades_registradas if u["color"] == color]
+        datos_color = [[u["clave"], u["rodada"], u["color"]] for u in unidades_color]
+        datos.extend(datos_color)
+        print(tabulate(datos_color, headers=headers, tablefmt="grid"))
+    
+    ExportarReporte(datos, headers, "listado_unidades_por_color")
 
 def VerUsuariosRegistrados():
     print("\n\tListado de Usuarios Registrados")
