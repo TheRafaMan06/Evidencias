@@ -263,12 +263,12 @@ def RegistrarPrestamo():
 
     # Validar clave de la unidad
     while True:
-        clave_unidad = input("Ingrese la clave de la unidad (número entero mayor a cero): ")
+        clave_unidad = input("Ingrese la clave de la unidad: ")
         if clave_unidad.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuPrestamo()
-        if clave_unidad.isdigit() and int(clave_unidad) > 0:
-            clave_unidad = int(clave_unidad)
+        if clave_unidad.isdigit():
+            clave_unidad = f"{int(clave_unidad):03d}"  # Formatear a 3 dígitos
             if any(unidad['clave'] == clave_unidad for unidad in unidades_registradas):
                 break
             else:
@@ -278,12 +278,12 @@ def RegistrarPrestamo():
     
     # Validar clave del cliente
     while True:
-        clave_cliente = input("Ingrese la clave del cliente (número entero mayor a cero): ")
+        clave_cliente = input("Ingrese la clave del cliente: ")
         if clave_cliente.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuPrestamo()
-        if clave_cliente.isdigit() and int(clave_cliente) > 0:
-            clave_cliente = int(clave_cliente)
+        if clave_cliente.isdigit():
+            clave_cliente = f"{int(clave_cliente):03d}"  # Formatear a 3 dígitos
             if any(cliente['clave_cliente'] == clave_cliente for cliente in clientes_registrados):
                 break
             else:
