@@ -418,24 +418,21 @@ def VerPrestamos():
 
 def MenuRetorno():
     actualizar_ruta("Retorno")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tMenú de Retorno')
-        print('\t1. Ver préstamos pendientes de retorno')
-        print('\t2. Registrar retorno')
-        print('\t3. Volver al Menú Principal')
 
-        opcionRetorno = input('\nOpción deseada: ')
+    print('\n')
+    mostrar_ruta()
+    print('\n\tMenú de Retorno')
+    print('\t1. Registrar retorno')
+    print('\t2. Volver al Menú Principal')
+
+    opcionRetorno = input('\nOpción deseada: ')
         
-        if opcionRetorno == '1':
-            MostrarPrestamosPendientes()
-        elif opcionRetorno == '2':
-            RegistrarRetorno()
-        elif opcionRetorno == '3':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcionRetorno == '1':
+        RegistrarRetorno()
+    elif opcionRetorno == '2':
+        MenuPrincipal()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def MostrarPrestamosPendientes():
     print("\n\tPréstamos Pendientes de Retorno")
@@ -448,7 +445,6 @@ def MostrarPrestamosPendientes():
         tabla = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"]] for p in prestamos_pendientes]
         print(tabulate(tabla, headers=["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo"], tablefmt="grid"))
     
-    MenuRetorno()
 
 def RegistrarRetorno():
 
@@ -930,7 +926,6 @@ def ReportePrestamosPorColor():
 
     # Exportar el reporte si es necesario
     ExportarReporte(df_ranking_color.values, ['Color', 'Cantidad de Préstamos'], "reporte_prestamos_por_color")
-
 
 if __name__ == "__main__":
     main()
