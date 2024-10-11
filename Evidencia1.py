@@ -4,28 +4,13 @@ from datetime import datetime, timedelta
 from tabulate import tabulate
 import pandas as pd
 import numpy as np
+import logging
 
 def main():
     print('Hola, ¿cómo estás?')
     print('Selecciona la opción que deseas realizar en este momento:')
     MenuPrincipal()
 
-# Inicializar la ruta como una lista vacía
-ruta_actual = []
-
-def mostrar_ruta():
-    print(" > ".join(ruta_actual))
-
-def actualizar_ruta(nuevo_menu):
-    global ruta_actual
-    if nuevo_menu == "Menú Principal":
-        ruta_actual = ["Menú Principal"]
-    elif nuevo_menu in ruta_actual:
-        # Si volvemos a un menú anterior, cortamos la ruta hasta ese punto
-        index = ruta_actual.index(nuevo_menu)
-        ruta_actual = ruta_actual[:index + 1]
-    else:
-        ruta_actual.append(nuevo_menu)
 
 # Actualizar la estructura de datos de unidades
 def cargar_datos(nombre_archivo):
@@ -64,36 +49,33 @@ continuar = True
 
 def MenuPrincipal():
     global continuar
-    actualizar_ruta("Menú Principal")
-    while continuar:
-        print('\n')
-        mostrar_ruta()
-        print('\n\t Menú Principal')
-        print('\t1. Registro')
-        print('\t2. Préstamo')
-        print('\t3. Retorno')
-        print('\t4. Informes')
-        print('\t5. Salir')
+    print("Menú Principal")
+    
+    print('\n')
+    print('\n\t Menú Principal')
+    print('\t1. Registro')
+    print('\t2. Préstamo')
+    print('\t3. Retorno')
+    print('\t4. Informes')
+    print('\t5. Salir')
 
-        opcion = input('\nOpción deseada: ')
+    opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            MenuRegistro()
-        elif opcion == '2':
-            MenuPrestamo()
-        elif opcion == '3':
-            MenuRetorno()
-        elif opcion == '4':
-            MenuInformes()
-        elif opcion == '5':
-            if ConfirmarSalida():
-                print('\nGracias por usar el sistema. ¡Hasta luego!')
-                GuardarYSalir()
-                continuar = False
-            else:
-                continue
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcion == '1':
+        MenuRegistro()
+    elif opcion == '2':
+        MenuPrestamo()
+    elif opcion == '3':
+        MenuRetorno()
+    elif opcion == '4':
+        MenuInformes()
+    elif opcion == '5':
+        ConfirmarSalida()
+        print('\nGracias por usar el sistema. ¡Hasta luego!')
+        GuardarYSalir()
+        continuar = False    
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def GuardarYSalir():
     guardar_todos_los_datos()
@@ -139,32 +121,30 @@ def mostrar_catalogo_clientes():
             print(f"Clave: {cliente['clave_cliente']} - Nombre: {cliente['nombres']} {cliente['apellidos']}")
 
 def MenuRegistro():
-    actualizar_ruta("Registro")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n¿Qué deseas hacer?')
-        print('\t1. Unidades')
-        print('\t2. Clientes')
-        print('\t3. Volver al Menú Principal')
+    print("Menú Principal > Menu Registro")
+    
+    print('\n')
+    print('\n¿Qué deseas hacer?')
+    print('\t1. Unidades')
+    print('\t2. Clientes')
+    print('\t3. Volver al Menú Principal')
 
-        opcionRegistro = input('\nOpción deseada: ')
+    opcionRegistro = input('\nOpción deseada: ')
 
-        if opcionRegistro == '1':
-            MenuUnidad()
-        elif opcionRegistro == '2':
-            MenuCliente()
-        elif opcionRegistro == '3':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcionRegistro == '1':
+        MenuUnidad()
+    elif opcionRegistro == '2':
+        MenuCliente()
+    elif opcionRegistro == '3':
+        MenuPrincipal
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 
 def MenuUnidad():
-    actualizar_ruta("Unidades")
+    print("Menú Principal > Menu Registro > Menu Unidad")
     while True:
         print('\n')
-        mostrar_ruta()
         print('\n¿Qué deseas realizar?')
         print('\t1. Agregar nueva unidad')
         print('\t2. Volver al Menú de Registro')
@@ -225,6 +205,9 @@ def RegistrarUnidad():
 
 
 def MenuCliente():
+    print("Menú Principal > Menu Registro > Menu Cliente")
+    
+    print('\n')
     print('\n¿Qué deseas realizar?')
     print('\t1. Registrar nuevo cliente')
     print('\t2. Volver al Menú Principal')
@@ -293,10 +276,9 @@ def RegistrarCliente():
 
 
 def MenuPrestamo():
-    actualizar_ruta("Préstamo")
+    print("Menú Principal > Menu Prestamo")
     while True:
         print('\n')
-        mostrar_ruta()
         print('\n¿Qué deseas realizar?')
         print('\t1. Registrar un nuevo préstamo')
         print('\t2. Volver al Menú Principal')
@@ -417,10 +399,9 @@ def VerPrestamos():
     
 
 def MenuRetorno():
-    actualizar_ruta("Retorno")
+    print("Menú Principal > Menu Retorno")
 
     print('\n')
-    mostrar_ruta()
     print('\n\tMenú de Retorno')
     print('\t1. Registrar retorno')
     print('\t2. Volver al Menú Principal')
@@ -534,55 +515,53 @@ def ExportarExcel(datos, headers, nombre_archivo):
     print(f"Reporte exportado como Excel: {nombre_archivo}")
 
 def MenuInformes():
-    actualizar_ruta("Informes")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tMenú de Informes')
-        print('\t1. Reportes')
-        print('\t2. Análisis')
-        print('\t3. Volver al Menú Principal')
+    print("Menú Principal > Menu Informes")
+    
+    print('\n')
+    print('\n\tMenú de Informes')
+    print('\t1. Reportes')
+    print('\t2. Análisis')
+    print('\t3. Volver al Menú Principal')
 
-        opcion = input('\nOpción deseada: ')
+    opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            MenuReportes()
-        elif opcion == '2':
-            MenuAnalisis()
-        elif opcion == '3':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcion == '1':
+        MenuReportes()
+    elif opcion == '2':
+        MenuAnalisis()
+    elif opcion == '3':
+        MenuPrincipal()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def MenuReportes():
-    actualizar_ruta("Reportes")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tMenú de Reportes')
-        print('\t1. Ver usuarios registrados')
-        print('\t2. Ver préstamos no devueltos')
-        print('\t3. Buscar préstamos por duración')
-        print('\t4. Listado de unidades')
-        print('\t5. Reporte de retrasos')
-        print('\t6. Volver al Menú Principal')
+    print("Menú Principal > Menu Informes > Menu Reportes")
+    
+    print('\n')
+    print('\n\tMenú de Reportes')
+    print('\t1. Ver usuarios registrados')
+    print('\t2. Ver préstamos no devueltos')
+    print('\t3. Buscar préstamos por duración')
+    print('\t4. Listado de unidades')
+    print('\t5. Reporte de retrasos')
+    print('\t6. Volver al Menú Principal')
 
-        opcion = input('\nOpción deseada: ')
+    opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            VerUsuariosRegistrados()
-        elif opcion == '2':
-            VerPrestamosNoDevueltos()
-        elif opcion == '3':
-            BuscarPrestamosPorFechas()
-        elif opcion == '4':
-            MenuListadoUnidades()
-        elif opcion == '5':
-            ReporteRetrasos()
-        elif opcion == '6':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcion == '1':
+        VerUsuariosRegistrados()
+    elif opcion == '2':
+        VerPrestamosNoDevueltos()
+    elif opcion == '3':
+        BuscarPrestamosPorFechas()
+    elif opcion == '4':
+        MenuListadoUnidades()
+    elif opcion == '5':
+        ReporteRetrasos()
+    elif opcion == '6':
+        MenuInformes()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def ReporteRetrasos():
     print("\n\tReporte de Préstamos con Retraso")
@@ -621,38 +600,38 @@ def ReporteRetrasos():
 
     prestamos_retrasados.sort(key=lambda x: x["Días de retraso"], reverse=True)
 
-    headers = ["Días de retraso", "Fecha de retorno", "Fecha en que se debió haber retornado", 
-               "Clave de unidad", "Rodada", "Color", "Nombre completo del cliente", "Teléfono de contacto"]
+    headers = ["Días de retraso", "Fecha de retorno", "Fecha en que se debió haber retornado", "Clave de unidad", "Rodada", "Color", "Nombre completo del cliente", "Teléfono de contacto"]
     
     datos = [[p[h] for h in headers] for p in prestamos_retrasados]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     ExportarReporte(datos, headers, "reporte_prestamos_retrasados")
+    
+    MenuReportes()
 
 def MenuListadoUnidades():
-    actualizar_ruta("Listado de Unidades")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tListado de Unidades')
-        print('\t1. Completo')
-        print('\t2. Por rodada')
-        print('\t3. Por color')
-        print('\t4. Volver al Menú de Reportes')
+    print("Menú Principal > Menu Informes > Menu Reportes > Menu Listado de Unidades")
+    
+    print('\n')
+    print('\n\tListado de Unidades')
+    print('\t1. Completo')
+    print('\t2. Por rodada')
+    print('\t3. Por color')
+    print('\t4. Volver al Menú de Reportes')
 
-        opcion = input('\nOpción deseada: ')
+    opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            ListadoUnidadesCompleto()
-        elif opcion == '2':
-            ListadoUnidadesPorRodada()
-        elif opcion == '3':
-            ListadoUnidadesPorColor()
-        elif opcion == '4':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcion == '1':
+        ListadoUnidadesCompleto()
+    elif opcion == '2':
+        ListadoUnidadesPorRodada()
+    elif opcion == '3':
+        ListadoUnidadesPorColor()
+    elif opcion == '4':
+        MenuReportes()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def ListadoUnidadesCompleto():
     print("\n\tListado Completo de Unidades")
@@ -688,6 +667,8 @@ def ListadoUnidadesPorRodada():
         print(tabulate(datos_rodada, headers=headers, tablefmt="grid"))
     
     ExportarReporte(datos, headers, "listado_unidades_por_rodada")
+    
+    MenuListadoUnidades()
 
 def ListadoUnidadesPorColor():
     print("\n\tListado de Unidades por Color")
@@ -709,6 +690,8 @@ def ListadoUnidadesPorColor():
         print(tabulate(datos_color, headers=headers, tablefmt="grid"))
     
     ExportarReporte(datos, headers, "listado_unidades_por_color")
+    
+    MenuListadoUnidades()
 
 def VerUsuariosRegistrados():
     print("\n\tListado de Usuarios Registrados")
@@ -723,6 +706,8 @@ def VerUsuariosRegistrados():
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     ExportarReporte(datos, headers, "usuarios_registrados")
+    
+    MenuReportes()
 
 def VerPrestamosNoDevueltos():
     print("\n\tListado de Préstamos No Devueltos")
@@ -739,6 +724,8 @@ def VerPrestamosNoDevueltos():
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     ExportarReporte(datos, headers, "prestamos_no_devueltos")
+    
+    MenuReportes()
 
 def BuscarPrestamosPorFechas():
     # Solicitar fechas de inicio y retorno
@@ -777,155 +764,184 @@ def BuscarPrestamosPorFechas():
     
     # Exportar el reporte si es necesario
     ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.date()}_a_{fecha_retorno.date()}")
+    
+    MenuReportes()
 
 def MenuAnalisis():
-    actualizar_ruta("Análisis")
-    while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tMenú de Análisis')
-        print('\t1. Duración de los préstamos')
-        print('\t2. Ranking de clientes')
-        print('\t3. Preferencias de rentas')
-        print('\t4. Volver al Menú de Informes')
+    print("Menú Principal > Menu Informes > Menu Analisis")
+    
+    print('\n')
+    print('\n\tMenú de Análisis')
+    print('\t1. Duración de los préstamos')
+    print('\t2. Ranking de clientes')
+    print('\t3. Preferencias de rentas')
+    print('\t4. Volver al Menú de Informes')
 
-        opcion = input('\nOpción deseada: ')
+    opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            AnalisisDuracionPrestamos()
-        elif opcion == '2':
-            RankingClientes()
-        elif opcion == '3':
-            MenuPreferenciasRentas()
-        elif opcion == '4':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+    if opcion == '1':
+        AnalisisDuracionPrestamos()
+    elif opcion == '2':
+        RankingClientes()
+    elif opcion == '3':
+        MenuPreferenciasRentas()
+    elif opcion == '4':
+        MenuInformes()
+    else:
+        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        MenuAnalisis()
+
 def RankingClientes():
-    print("\n\tRanking de Clientes")
+    try:
+        print("\n\tRanking de Clientes")
 
-    # Convertir los datos de préstamos a un DataFrame
-    df_prestamos = pd.DataFrame(prestamos_registrados)
-    df_clientes = pd.DataFrame(clientes_registrados)
+        if not prestamos_registrados or not clientes_registrados:
+            print("No hay datos suficientes para generar el ranking.")
+            return
 
-    # Contar la cantidad de préstamos por cliente
-    df_ranking = df_prestamos.groupby('Clave Cliente').size().reset_index(name='Cantidad de Prestamos')
+        df_prestamos = pd.DataFrame(prestamos_registrados)
+        df_clientes = pd.DataFrame(clientes_registrados)
 
-    # Unir los datos con el DataFrame de clientes para obtener los detalles
-    df_ranking = df_ranking.merge(df_clientes, left_on='Clave Cliente', right_on='clave_cliente')
+        df_ranking = df_prestamos.groupby('Clave Cliente').size().reset_index(name='Cantidad de Prestamos')
+        df_ranking = df_ranking.merge(df_clientes, left_on='Clave Cliente', right_on='clave_cliente', how='left')
 
-    # Seleccionar las columnas relevantes y ordenar por la cantidad de préstamos
-    df_ranking = df_ranking[['Cantidad de Prestamos', 'clave_cliente', 'nombres', 'apellidos', 'telefono']]
-    df_ranking = df_ranking.sort_values(by='Cantidad de Prestamos', ascending=False)
+        df_ranking = df_ranking[['Cantidad de Prestamos', 'clave_cliente', 'nombres', 'apellidos', 'telefono']]
+        df_ranking = df_ranking.sort_values(by='Cantidad de Prestamos', ascending=False)
 
-    # Mostrar el ranking en formato tabla
-    print(tabulate(df_ranking.values, headers=['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], tablefmt="grid"))
+        if df_ranking.empty:
+            print("No hay datos para mostrar en el ranking.")
+        else:
+            print(tabulate(df_ranking.values, headers=['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], tablefmt="grid"))
+            ExportarReporte(df_ranking.values, ['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], "ranking_clientes")
 
-    # Exportar el reporte si es necesario
-    ExportarReporte(df_ranking.values, ['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], "ranking_clientes")
+    except Exception as e:
+        logging.error(f"Error en RankingClientes: {str(e)}")
+        print("Ocurrió un error al generar el ranking de clientes.")
+    
+    MenuAnalisis()
 
 def AnalisisDuracionPrestamos():
-    print("\n\tAnálisis de Duración de los Préstamos")
+    try:
+        print("\n\tAnálisis de Duración de los Préstamos")
+        
+        if not prestamos_registrados:
+            print("No hay datos de préstamos para analizar.")
+            return
+
+        df = pd.DataFrame(prestamos_registrados)
+        df['Días Prestamo'] = pd.to_numeric(df['Días Prestamo'], errors='coerce')
+        
+        if df['Días Prestamo'].isnull().all():
+            print("No hay datos válidos de duración de préstamos para analizar.")
+            return
+
+        descripcion = df['Días Prestamo'].describe(percentiles=[.25, .5, .75])
+        moda = df['Días Prestamo'].mode().values
+        desviacion_estandar = df['Días Prestamo'].std()
+        
+        resultados = {
+            "Media": descripcion['mean'],
+            "Mediana": descripcion['50%'],
+            "Moda": moda[0] if len(moda) > 0 else None,
+            "Mínimo": descripcion['min'],
+            "Máximo": descripcion['max'],
+            "Desviación Estándar": desviacion_estandar,
+            "Primer Cuartil (25%)": descripcion['25%'],
+            "Tercer Cuartil (75%)": descripcion['75%']
+        }
+        
+        tabla_resultados = [[k, v] for k, v in resultados.items()]
+        headers = ["Estadística", "Valor"]
+        print(tabulate(tabla_resultados, headers=headers, tablefmt="grid"))
+        
+        ExportarReporte(tabla_resultados, headers, "analisis_duracion_prestamos")
+
+    except Exception as e:
+        logging.error(f"Error en AnalisisDuracionPrestamos: {str(e)}")
+        print("Ocurrió un error al analizar la duración de los préstamos.")
     
-    # Convertir los datos de préstamos a un DataFrame de Pandas
-    df = pd.DataFrame(prestamos_registrados)
-    
-    # Convertir 'Días Prestamo' a numérico
-    df['Días Prestamo'] = pd.to_numeric(df['Días Prestamo'], errors='coerce')
-    
-    # Calcular estadísticas descriptivas
-    descripcion = df['Días Prestamo'].describe(percentiles=[.25, .5, .75])
-    
-    # Calcular la moda
-    moda = df['Días Prestamo'].mode().values
-    
-    # Calcular la desviación estándar
-    desviacion_estandar = df['Días Prestamo'].std()
-    
-    # Crear un diccionario con los resultados
-    resultados = {
-        "Media": descripcion['mean'],
-        "Mediana": descripcion['50%'],
-        "Moda": moda[0] if len(moda) > 0 else None,
-        "Mínimo": descripcion['min'],
-        "Máximo": descripcion['max'],
-        "Desviación Estándar": desviacion_estandar,
-        "Primer Cuartil (25%)": descripcion['25%'],
-        "Tercer Cuartil (75%)": descripcion['75%']
-    }
-    
-    # Mostrar los resultados en forma de tabla
-    tabla_resultados = [[k, v] for k, v in resultados.items()]
-    headers = ["Estadística", "Valor"]
-    print(tabulate(tabla_resultados, headers=headers, tablefmt="grid"))
-    
-    # Opción para exportar el reporte
-    ExportarReporte(tabla_resultados, headers, "analisis_duracion_prestamos")
+    MenuAnalisis()
 
 def MenuPreferenciasRentas():
-    actualizar_ruta("Preferencias de Rentas")
     while True:
-        print('\n')
-        mostrar_ruta()
-        print('\n\tPreferencias de Rentas')
-        print('\t1. Cantidad de préstamos por rodada')
-        print('\t2. Cantidad de préstamos por color')
-        print('\t3. Volver al Menú de Análisis')
+        try:
+            print('\n')
+            print('\n\tPreferencias de Rentas')
+            print('\t1. Cantidad de préstamos por rodada')
+            print('\t2. Cantidad de préstamos por color')
+            print('\t3. Volver al Menú de Análisis')
 
-        opcion = input('\nOpción deseada: ')
+            opcion = input('\nOpción deseada: ')
 
-        if opcion == '1':
-            ReportePrestamosPorRodada()
-        elif opcion == '2':
-            ReportePrestamosPorColor()
-        elif opcion == '3':
-            return
-        else:
-            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+            if opcion == '1':
+                ReportePrestamosPorRodada()
+            elif opcion == '2':
+                ReportePrestamosPorColor()
+            elif opcion == '3':
+                return
+            else:
+                print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        except Exception as e:
+            logging.error(f"Error en MenuPreferenciasRentas: {str(e)}")
+            print("Ocurrió un error. Por favor, inténtalo de nuevo.")
 
 def ReportePrestamosPorRodada():
-    print("\n\tReporte de Préstamos por Rodada")
+    try:
+        print("\n\tReporte de Préstamos por Rodada")
 
-    # Convertir los datos de préstamos a un DataFrame
-    df_prestamos = pd.DataFrame(prestamos_registrados)
-    df_unidades = pd.DataFrame(unidades_registradas)
+        if not prestamos_registrados or not unidades_registradas:
+            print("No hay datos suficientes para generar el reporte.")
+            return
 
-    # Unir los préstamos con las unidades para obtener la rodada
-    df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave')
+        df_prestamos = pd.DataFrame(prestamos_registrados)
+        df_unidades = pd.DataFrame(unidades_registradas)
 
-    # Contar los préstamos por rodada
-    df_ranking_rodada = df_prestamos.groupby('rodada').size().reset_index(name='Cantidad de Prestamos')
+        df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave', how='left')
 
-    # Ordenar por cantidad de préstamos de forma descendente
-    df_ranking_rodada = df_ranking_rodada.sort_values(by='Cantidad de Prestamos', ascending=False)
+        if df_prestamos['rodada'].isnull().all():
+            print("No hay datos válidos de rodada para generar el reporte.")
+            return
 
-    # Mostrar el reporte en formato tabla
-    print(tabulate(df_ranking_rodada.values, headers=['Rodada', 'Cantidad de Préstamos'], tablefmt="grid"))
+        df_ranking_rodada = df_prestamos.groupby('rodada').size().reset_index(name='Cantidad de Prestamos')
+        df_ranking_rodada = df_ranking_rodada.sort_values(by='Cantidad de Prestamos', ascending=False)
 
-    # Exportar el reporte si es necesario
-    ExportarReporte(df_ranking_rodada.values, ['Rodada', 'Cantidad de Préstamos'], "reporte_prestamos_por_rodada")
+        print(tabulate(df_ranking_rodada.values, headers=['Rodada', 'Cantidad de Préstamos'], tablefmt="grid"))
+        ExportarReporte(df_ranking_rodada.values, ['Rodada', 'Cantidad de Préstamos'], "reporte_prestamos_por_rodada")
+
+    except Exception as e:
+        logging.error(f"Error en ReportePrestamosPorRodada: {str(e)}")
+        print("Ocurrió un error al generar el reporte de préstamos por rodada.")
+    
+    MenuPreferenciasRentas()
 
 def ReportePrestamosPorColor():
-    print("\n\tReporte de Préstamos por Color")
+    try:
+        print("\n\tReporte de Préstamos por Color")
 
-    # Convertir los datos de préstamos a un DataFrame
-    df_prestamos = pd.DataFrame(prestamos_registrados)
-    df_unidades = pd.DataFrame(unidades_registradas)
+        if not prestamos_registrados or not unidades_registradas:
+            print("No hay datos suficientes para generar el reporte.")
+            return
 
-    # Unir los préstamos con las unidades para obtener el color
-    df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave')
+        df_prestamos = pd.DataFrame(prestamos_registrados)
+        df_unidades = pd.DataFrame(unidades_registradas)
 
-    # Contar los préstamos por color
-    df_ranking_color = df_prestamos.groupby('color').size().reset_index(name='Cantidad de Prestamos')
+        df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave', how='left')
 
-    # Ordenar por cantidad de préstamos de forma descendente
-    df_ranking_color = df_ranking_color.sort_values(by='Cantidad de Prestamos', ascending=False)
+        if df_prestamos['color'].isnull().all():
+            print("No hay datos válidos de color para generar el reporte.")
+            return
 
-    # Mostrar el reporte en formato tabla
-    print(tabulate(df_ranking_color.values, headers=['Color', 'Cantidad de Préstamos'], tablefmt="grid"))
+        df_ranking_color = df_prestamos.groupby('color').size().reset_index(name='Cantidad de Prestamos')
+        df_ranking_color = df_ranking_color.sort_values(by='Cantidad de Prestamos', ascending=False)
 
-    # Exportar el reporte si es necesario
-    ExportarReporte(df_ranking_color.values, ['Color', 'Cantidad de Préstamos'], "reporte_prestamos_por_color")
+        print(tabulate(df_ranking_color.values, headers=['Color', 'Cantidad de Préstamos'], tablefmt="grid"))
+        ExportarReporte(df_ranking_color.values, ['Color', 'Cantidad de Préstamos'], "reporte_prestamos_por_color")
+
+    except Exception as e:
+        logging.error(f"Error en ReportePrestamosPorColor: {str(e)}")
+        print("Ocurrió un error al generar el reporte de préstamos por color.")
+    
+    MenuPreferenciasRentas()
 
 if __name__ == "__main__":
     main()
