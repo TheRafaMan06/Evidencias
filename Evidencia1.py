@@ -2,6 +2,8 @@ import csv
 import openpyxl
 from datetime import datetime, timedelta
 from tabulate import tabulate
+import pandas as pd
+import numpy as np
 
 def main():
     print('Hola, ¿cómo estás?')
@@ -70,7 +72,7 @@ def MenuPrincipal():
         print('\t1. Registro')
         print('\t2. Préstamo')
         print('\t3. Retorno')
-        print('\t4. Reportes')
+        print('\t4. Informes')
         print('\t5. Salir')
 
         opcion = input('\nOpción deseada: ')
@@ -82,7 +84,7 @@ def MenuPrincipal():
         elif opcion == '3':
             MenuRetorno()
         elif opcion == '4':
-            MenuReportes()
+            MenuInformes()
         elif opcion == '5':
             if ConfirmarSalida():
                 print('\nGracias por usar el sistema. ¡Hasta luego!')
@@ -535,6 +537,27 @@ def ExportarExcel(datos, headers, nombre_archivo):
     wb.save(nombre_archivo)
     print(f"Reporte exportado como Excel: {nombre_archivo}")
 
+def MenuInformes():
+    actualizar_ruta("Informes")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tMenú de Informes')
+        print('\t1. Reportes')
+        print('\t2. Análisis')
+        print('\t3. Volver al Menú Principal')
+
+        opcion = input('\nOpción deseada: ')
+
+        if opcion == '1':
+            MenuReportes()
+        elif opcion == '2':
+            MenuAnalisis()
+        elif opcion == '3':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
 def MenuReportes():
     actualizar_ruta("Reportes")
     while True:
@@ -758,6 +781,155 @@ def BuscarPrestamosPorFechas():
     
     # Exportar el reporte si es necesario
     ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.date()}_a_{fecha_retorno.date()}")
+
+def MenuAnalisis():
+    actualizar_ruta("Análisis")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tMenú de Análisis')
+        print('\t1. Duración de los préstamos')
+        print('\t2. Ranking de clientes')
+        print('\t3. Preferencias de rentas')
+        print('\t4. Volver al Menú de Informes')
+
+        opcion = input('\nOpción deseada: ')
+
+        if opcion == '1':
+            AnalisisDuracionPrestamos()
+        elif opcion == '2':
+            RankingClientes()
+        elif opcion == '3':
+            MenuPreferenciasRentas()
+        elif opcion == '4':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+def RankingClientes():
+    print("\n\tRanking de Clientes")
+
+    # Convertir los datos de préstamos a un DataFrame
+    df_prestamos = pd.DataFrame(prestamos_registrados)
+    df_clientes = pd.DataFrame(clientes_registrados)
+
+    # Contar la cantidad de préstamos por cliente
+    df_ranking = df_prestamos.groupby('Clave Cliente').size().reset_index(name='Cantidad de Prestamos')
+
+    # Unir los datos con el DataFrame de clientes para obtener los detalles
+    df_ranking = df_ranking.merge(df_clientes, left_on='Clave Cliente', right_on='clave_cliente')
+
+    # Seleccionar las columnas relevantes y ordenar por la cantidad de préstamos
+    df_ranking = df_ranking[['Cantidad de Prestamos', 'clave_cliente', 'nombres', 'apellidos', 'telefono']]
+    df_ranking = df_ranking.sort_values(by='Cantidad de Prestamos', ascending=False)
+
+    # Mostrar el ranking en formato tabla
+    print(tabulate(df_ranking.values, headers=['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], tablefmt="grid"))
+
+    # Exportar el reporte si es necesario
+    ExportarReporte(df_ranking.values, ['Préstamos', 'Clave Cliente', 'Nombre', 'Apellidos', 'Teléfono'], "ranking_clientes")
+
+def AnalisisDuracionPrestamos():
+    print("\n\tAnálisis de Duración de los Préstamos")
+    
+    # Convertir los datos de préstamos a un DataFrame de Pandas
+    df = pd.DataFrame(prestamos_registrados)
+    
+    # Convertir 'Días Prestamo' a numérico
+    df['Días Prestamo'] = pd.to_numeric(df['Días Prestamo'], errors='coerce')
+    
+    # Calcular estadísticas descriptivas
+    descripcion = df['Días Prestamo'].describe(percentiles=[.25, .5, .75])
+    
+    # Calcular la moda
+    moda = df['Días Prestamo'].mode().values
+    
+    # Calcular la desviación estándar
+    desviacion_estandar = df['Días Prestamo'].std()
+    
+    # Crear un diccionario con los resultados
+    resultados = {
+        "Media": descripcion['mean'],
+        "Mediana": descripcion['50%'],
+        "Moda": moda[0] if len(moda) > 0 else None,
+        "Mínimo": descripcion['min'],
+        "Máximo": descripcion['max'],
+        "Desviación Estándar": desviacion_estandar,
+        "Primer Cuartil (25%)": descripcion['25%'],
+        "Tercer Cuartil (75%)": descripcion['75%']
+    }
+    
+    # Mostrar los resultados en forma de tabla
+    tabla_resultados = [[k, v] for k, v in resultados.items()]
+    headers = ["Estadística", "Valor"]
+    print(tabulate(tabla_resultados, headers=headers, tablefmt="grid"))
+    
+    # Opción para exportar el reporte
+    ExportarReporte(tabla_resultados, headers, "analisis_duracion_prestamos")
+
+def MenuPreferenciasRentas():
+    actualizar_ruta("Preferencias de Rentas")
+    while True:
+        print('\n')
+        mostrar_ruta()
+        print('\n\tPreferencias de Rentas')
+        print('\t1. Cantidad de préstamos por rodada')
+        print('\t2. Cantidad de préstamos por color')
+        print('\t3. Volver al Menú de Análisis')
+
+        opcion = input('\nOpción deseada: ')
+
+        if opcion == '1':
+            ReportePrestamosPorRodada()
+        elif opcion == '2':
+            ReportePrestamosPorColor()
+        elif opcion == '3':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def ReportePrestamosPorRodada():
+    print("\n\tReporte de Préstamos por Rodada")
+
+    # Convertir los datos de préstamos a un DataFrame
+    df_prestamos = pd.DataFrame(prestamos_registrados)
+    df_unidades = pd.DataFrame(unidades_registradas)
+
+    # Unir los préstamos con las unidades para obtener la rodada
+    df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave')
+
+    # Contar los préstamos por rodada
+    df_ranking_rodada = df_prestamos.groupby('rodada').size().reset_index(name='Cantidad de Prestamos')
+
+    # Ordenar por cantidad de préstamos de forma descendente
+    df_ranking_rodada = df_ranking_rodada.sort_values(by='Cantidad de Prestamos', ascending=False)
+
+    # Mostrar el reporte en formato tabla
+    print(tabulate(df_ranking_rodada.values, headers=['Rodada', 'Cantidad de Préstamos'], tablefmt="grid"))
+
+    # Exportar el reporte si es necesario
+    ExportarReporte(df_ranking_rodada.values, ['Rodada', 'Cantidad de Préstamos'], "reporte_prestamos_por_rodada")
+
+def ReportePrestamosPorColor():
+    print("\n\tReporte de Préstamos por Color")
+
+    # Convertir los datos de préstamos a un DataFrame
+    df_prestamos = pd.DataFrame(prestamos_registrados)
+    df_unidades = pd.DataFrame(unidades_registradas)
+
+    # Unir los préstamos con las unidades para obtener el color
+    df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave')
+
+    # Contar los préstamos por color
+    df_ranking_color = df_prestamos.groupby('color').size().reset_index(name='Cantidad de Prestamos')
+
+    # Ordenar por cantidad de préstamos de forma descendente
+    df_ranking_color = df_ranking_color.sort_values(by='Cantidad de Prestamos', ascending=False)
+
+    # Mostrar el reporte en formato tabla
+    print(tabulate(df_ranking_color.values, headers=['Color', 'Cantidad de Préstamos'], tablefmt="grid"))
+
+    # Exportar el reporte si es necesario
+    ExportarReporte(df_ranking_color.values, ['Color', 'Cantidad de Préstamos'], "reporte_prestamos_por_color")
 
 
 if __name__ == "__main__":
