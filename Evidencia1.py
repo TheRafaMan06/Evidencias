@@ -5,6 +5,7 @@ from tabulate import tabulate
 import pandas as pd
 import numpy as np
 import logging
+import sys
 
 def main():
     print('Hola, ¿cómo estás?')
@@ -41,48 +42,47 @@ def guardar_datos(nombre_archivo, datos, campos):
 
 
 # Cargar datos al inicio del programa
-unidades_registradas = cargar_datos("unidades")
+unidades_registrados = cargar_datos("unidades")
 prestamos_registrados = cargar_datos("prestamos")
 clientes_registrados = cargar_datos("clientes")
 
 continuar = True
 
+
 def MenuPrincipal():
     global continuar
-    print("Menú Principal")
-    
-    print('\n')
-    print('\n\t Menú Principal')
-    print('\t1. Registro')
-    print('\t2. Préstamo')
-    print('\t3. Retorno')
-    print('\t4. Informes')
-    print('\t5. Salir')
+    while continuar:
+        print("\nMenú Principal")
+        print('\t1. Registro')
+        print('\t2. Préstamo')
+        print('\t3. Retorno')
+        print('\t4. Informes')
+        print('\t5. Salir')
 
-    opcion = input('\nOpción deseada: ')
+        opcion = input('\nOpción deseada: ')
 
-    if opcion == '1':
-        MenuRegistro()
-    elif opcion == '2':
-        MenuPrestamo()
-    elif opcion == '3':
-        MenuRetorno()
-    elif opcion == '4':
-        MenuInformes()
-    elif opcion == '5':
-        ConfirmarSalida()
-        print('\nGracias por usar el sistema. ¡Hasta luego!')
-        GuardarYSalir()
-        continuar = False    
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        if opcion == '1':
+            MenuRegistro()
+        elif opcion == '2':
+            MenuPrestamo()
+        elif opcion == '3':
+            MenuRetorno()
+        elif opcion == '4':
+            MenuInformes()
+        elif opcion == '5':
+            if ConfirmarSalida():
+                print('\nGracias por usar el sistema. ¡Hasta luego!')
+                GuardarYSalir()
+                sys.exit()  # Usamos sys.exit() para cerrar el programa
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def GuardarYSalir():
     guardar_todos_los_datos()
     print('\nDatos guardados. Gracias por usar el sistema. ¡Hasta luego!')
 
 def guardar_todos_los_datos():
-    guardar_datos("unidades", unidades_registradas, ["clave", "rodada", "color"])
+    guardar_datos("unidades", unidades_registrados, ["clave", "rodada", "color"])
     guardar_datos("prestamos", prestamos_registrados, ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"])
     guardar_datos("clientes", clientes_registrados, ["clave_cliente", "apellidos", "nombres", "telefono"])
 
@@ -106,10 +106,10 @@ def generar_siguiente_clave(lista_datos, clave_campo):
 
 def mostrar_catalogo_unidades():
     print("\nCatálogo de Unidades:")
-    if not unidades_registradas:
+    if not unidades_registrados:
         print("No hay unidades registradas.")
     else:
-        for unidad in unidades_registradas:
+        for unidad in unidades_registrados:
             print(f"Clave: {unidad['clave']} - Rodada: {unidad['rodada']} - Color: {unidad['color']}")
 
 def mostrar_catalogo_clientes():
@@ -119,27 +119,6 @@ def mostrar_catalogo_clientes():
     else:
         for cliente in clientes_registrados:
             print(f"Clave: {cliente['clave_cliente']} - Nombre: {cliente['nombres']} {cliente['apellidos']}")
-
-def MenuRegistro():
-    print("Menú Principal > Menu Registro")
-    
-    print('\n')
-    print('\n¿Qué deseas hacer?')
-    print('\t1. Unidades')
-    print('\t2. Clientes')
-    print('\t3. Volver al Menú Principal')
-
-    opcionRegistro = input('\nOpción deseada: ')
-
-    if opcionRegistro == '1':
-        MenuUnidad()
-    elif opcionRegistro == '2':
-        MenuCliente()
-    elif opcionRegistro == '3':
-        MenuPrincipal
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
-
 
 def MenuUnidad():
     print("Menú Principal > Menu Registro > Menu Unidad")
@@ -154,6 +133,26 @@ def MenuUnidad():
         if opcionUnidad == '1':
             RegistrarUnidad()
         elif opcionUnidad == '2':
+            return  # Esto hará que salgamos de la función y volvamos al MenuRegistro
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
+
+def MenuRegistro():
+    print("Menú Principal > Menu Registro")
+    while True:
+        print('\n')
+        print('\n¿Qué deseas hacer?')
+        print('\t1. Unidades')
+        print('\t2. Clientes')
+        print('\t3. Volver al Menú Principal')
+
+        opcionRegistro = input('\nOpción deseada: ')
+
+        if opcionRegistro == '1':
+            MenuUnidad()
+        elif opcionRegistro == '2':
+            MenuCliente()
+        elif opcionRegistro == '3':
             return
         else:
             print('\nOpción inválida. Por favor, selecciona una opción válida.')
@@ -161,7 +160,7 @@ def MenuUnidad():
 def RegistrarUnidad():
     print("\nPara cancelar en cualquier momento, ingrese 'cancelar'.")
     
-    clave = generar_siguiente_clave(unidades_registradas, "clave")
+    clave = generar_siguiente_clave(unidades_registrados, "clave")
     
     while True:
         rodada = input("\nIngrese la rodada de la bicicleta (20, 26 o 29): ")
@@ -193,7 +192,7 @@ def RegistrarUnidad():
         "rodada": rodada,
         "color": color
     }
-    unidades_registradas.append(unidad)
+    unidades_registrados.append(unidad)
     guardar_todos_los_datos()
         
     print("\nSe ha registrado la siguiente unidad:")
@@ -308,7 +307,7 @@ def RegistrarPrestamo():
             return MenuPrestamo()
         if clave_unidad.isdigit():
             clave_unidad = f"{int(clave_unidad):03d}"  # Formatear a 3 dígitos
-            if any(unidad['clave'] == clave_unidad for unidad in unidades_registradas):
+            if any(unidad['clave'] == clave_unidad for unidad in unidades_registrados):
                 break
             else:
                 print("Clave de unidad no encontrada. Por favor, ingrese una clave de unidad registrada.")
@@ -379,8 +378,11 @@ def RegistrarPrestamo():
     prestamos_registrados.append(prestamo)
     guardar_todos_los_datos()
     
+
     print("\nDatos del préstamo registrado:")
     print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
+
+    input("\nPresione Enter para continuar...")
 
     MenuPrestamo()
 
@@ -400,20 +402,20 @@ def VerPrestamos():
 
 def MenuRetorno():
     print("Menú Principal > Menu Retorno")
+    while True:
+        print('\n')
+        print('\n\tMenú de Retorno')
+        print('\t1. Registrar retorno')
+        print('\t2. Volver al Menú Principal')
 
-    print('\n')
-    print('\n\tMenú de Retorno')
-    print('\t1. Registrar retorno')
-    print('\t2. Volver al Menú Principal')
-
-    opcionRetorno = input('\nOpción deseada: ')
-        
-    if opcionRetorno == '1':
-        RegistrarRetorno()
-    elif opcionRetorno == '2':
-        MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        opcionRetorno = input('\nOpción deseada: ')
+            
+        if opcionRetorno == '1':
+            RegistrarRetorno()
+        elif opcionRetorno == '2':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def MostrarPrestamosPendientes():
     print("\n\tPréstamos Pendientes de Retorno")
@@ -516,23 +518,23 @@ def ExportarExcel(datos, headers, nombre_archivo):
 
 def MenuInformes():
     print("Menú Principal > Menu Informes")
-    
-    print('\n')
-    print('\n\tMenú de Informes')
-    print('\t1. Reportes')
-    print('\t2. Análisis')
-    print('\t3. Volver al Menú Principal')
+    while True:
+        print('\n')
+        print('\n\tMenú de Informes')
+        print('\t1. Reportes')
+        print('\t2. Análisis')
+        print('\t3. Volver al Menú Principal')
 
-    opcion = input('\nOpción deseada: ')
+        opcion = input('\nOpción deseada: ')
 
-    if opcion == '1':
-        MenuReportes()
-    elif opcion == '2':
-        MenuAnalisis()
-    elif opcion == '3':
-        MenuPrincipal()
-    else:
-        print('\nOpción inválida. Por favor, selecciona una opción válida.')
+        if opcion == '1':
+            MenuReportes()
+        elif opcion == '2':
+            MenuAnalisis()
+        elif opcion == '3':
+            return
+        else:
+            print('\nOpción inválida. Por favor, selecciona una opción válida.')
 
 def MenuReportes():
     print("Menú Principal > Menu Informes > Menu Reportes")
@@ -580,7 +582,7 @@ def ReporteRetrasos():
             dias_retraso = (fecha_retorno - fecha_debida).days
 
         if dias_retraso > 0:
-            unidad = next((u for u in unidades_registradas if u["clave"] == prestamo["Clave Unidad"]), None)
+            unidad = next((u for u in unidades_registrados if u["clave"] == prestamo["Clave Unidad"]), None)
             cliente = next((c for c in clientes_registrados if c["clave_cliente"] == prestamo["Clave Cliente"]), None)
             
             prestamos_retrasados.append({
@@ -636,12 +638,12 @@ def MenuListadoUnidades():
 def ListadoUnidadesCompleto():
     print("\n\tListado Completo de Unidades")
     
-    if not unidades_registradas:
+    if not unidades_registrados:
         print("No hay unidades registradas.")
         return
 
     headers = ["Clave", "Rodada", "Color"]
-    datos = [[u["clave"], u["rodada"], u["color"]] for u in unidades_registradas]
+    datos = [[u["clave"], u["rodada"], u["color"]] for u in unidades_registrados]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
@@ -650,18 +652,18 @@ def ListadoUnidadesCompleto():
 def ListadoUnidadesPorRodada():
     print("\n\tListado de Unidades por Rodada")
     
-    if not unidades_registradas:
+    if not unidades_registrados:
         print("No hay unidades registradas.")
         return
 
-    rodadas = sorted(set(u["rodada"] for u in unidades_registradas))
+    rodadas = sorted(set(u["rodada"] for u in unidades_registrados))
     
     headers = ["Clave", "Rodada", "Color"]
     datos = []
     
     for rodada in rodadas:
         print(f"\nRodada: {rodada}")
-        unidades_rodada = [u for u in unidades_registradas if u["rodada"] == rodada]
+        unidades_rodada = [u for u in unidades_registrados if u["rodada"] == rodada]
         datos_rodada = [[u["clave"], u["rodada"], u["color"]] for u in unidades_rodada]
         datos.extend(datos_rodada)
         print(tabulate(datos_rodada, headers=headers, tablefmt="grid"))
@@ -673,18 +675,18 @@ def ListadoUnidadesPorRodada():
 def ListadoUnidadesPorColor():
     print("\n\tListado de Unidades por Color")
     
-    if not unidades_registradas:
+    if not unidades_registrados:
         print("No hay unidades registradas.")
         return
 
-    colores = sorted(set(u["color"] for u in unidades_registradas))
+    colores = sorted(set(u["color"] for u in unidades_registrados))
     
     headers = ["Clave", "Rodada", "Color"]
     datos = []
     
     for color in colores:
         print(f"\nColor: {color}")
-        unidades_color = [u for u in unidades_registradas if u["color"] == color]
+        unidades_color = [u for u in unidades_registrados if u["color"] == color]
         datos_color = [[u["clave"], u["rodada"], u["color"]] for u in unidades_color]
         datos.extend(datos_color)
         print(tabulate(datos_color, headers=headers, tablefmt="grid"))
@@ -791,23 +793,45 @@ def MenuAnalisis():
         print('\nOpción inválida. Por favor, selecciona una opción válida.')
         MenuAnalisis()
 
+import pandas as pd
+import logging
+from tabulate import tabulate
+
 def RankingClientes():
     try:
         print("\n\tRanking de Clientes")
 
-        if not prestamos_registrados or not clientes_registrados:
+        # Asegúrate de que los datos se lean correctamente desde los CSV, forzando las claves a string
+        df_prestamos = pd.read_csv('prestamos.csv', dtype={'Clave Cliente': str})
+        df_clientes = pd.read_csv('clientes.csv', dtype={'clave_cliente': str})
+
+        # Limpieza de espacios en blanco o caracteres especiales
+        df_prestamos['Clave Cliente'] = df_prestamos['Clave Cliente'].str.strip()
+        df_clientes['clave_cliente'] = df_clientes['clave_cliente'].str.strip()
+
+        # Verificar si los datos han sido cargados correctamente
+        if df_prestamos.empty or df_clientes.empty:
             print("No hay datos suficientes para generar el ranking.")
             return
 
-        df_prestamos = pd.DataFrame(prestamos_registrados)
-        df_clientes = pd.DataFrame(clientes_registrados)
-
+        # Agrupar por la clave del cliente y contar la cantidad de préstamos
         df_ranking = df_prestamos.groupby('Clave Cliente').size().reset_index(name='Cantidad de Prestamos')
-        df_ranking = df_ranking.merge(df_clientes, left_on='Clave Cliente', right_on='clave_cliente', how='left')
 
+        # Realizar el merge
+        df_ranking = df_ranking.merge(df_clientes, left_on='Clave Cliente', right_on='clave_cliente', how='left', indicator=True)
+
+        # Mostrar las coincidencias del merge
+        print(df_ranking['_merge'].value_counts())
+
+        # Verificar filas que no coincidieron en el merge
+        print("Filas que no coincidieron en el merge:")
+        print(df_ranking[df_ranking['_merge'] != 'both'])
+
+        # Seleccionar columnas relevantes para el ranking
         df_ranking = df_ranking[['Cantidad de Prestamos', 'clave_cliente', 'nombres', 'apellidos', 'telefono']]
         df_ranking = df_ranking.sort_values(by='Cantidad de Prestamos', ascending=False)
-
+        
+        # Mostrar el DataFrame final y exportar si hay datos
         if df_ranking.empty:
             print("No hay datos para mostrar en el ranking.")
         else:
@@ -816,9 +840,13 @@ def RankingClientes():
 
     except Exception as e:
         logging.error(f"Error en RankingClientes: {str(e)}")
-        print("Ocurrió un error al generar el ranking de clientes.")
+        print(f"Ocurrió un error al generar el ranking de clientes: {str(e)}")
     
     MenuAnalisis()
+
+
+
+
 
 def AnalisisDuracionPrestamos():
     try:
@@ -885,32 +913,46 @@ def MenuPreferenciasRentas():
             logging.error(f"Error en MenuPreferenciasRentas: {str(e)}")
             print("Ocurrió un error. Por favor, inténtalo de nuevo.")
 
+import pandas as pd
+from tabulate import tabulate
+import logging
+
 def ReportePrestamosPorRodada():
     try:
         print("\n\tReporte de Préstamos por Rodada")
 
-        if not prestamos_registrados or not unidades_registradas:
+        if not prestamos_registrados or not unidades_registrados:
             print("No hay datos suficientes para generar el reporte.")
             return
 
         df_prestamos = pd.DataFrame(prestamos_registrados)
-        df_unidades = pd.DataFrame(unidades_registradas)
+        df_unidades = pd.DataFrame(unidades_registrados)
 
-        df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave', how='left')
+        # Asegurarse de que 'Clave Unidad' y 'clave' sean del mismo tipo (string)
+        df_prestamos['Clave Unidad'] = df_prestamos['Clave Unidad'].astype(str)
+        df_unidades['clave'] = df_unidades['clave'].astype(str)
+
+        # Realizar el merge
+        df_prestamos = df_prestamos.merge(df_unidades[['clave', 'rodada']], left_on='Clave Unidad', right_on='clave', how='left')
+
+        if 'rodada' not in df_prestamos.columns:
+            print("La columna 'rodada' no está presente después del merge.")
+            return
 
         if df_prestamos['rodada'].isnull().all():
             print("No hay datos válidos de rodada para generar el reporte.")
             return
 
-        df_ranking_rodada = df_prestamos.groupby('rodada').size().reset_index(name='Cantidad de Prestamos')
-        df_ranking_rodada = df_ranking_rodada.sort_values(by='Cantidad de Prestamos', ascending=False)
+        df_ranking_rodada = df_prestamos['rodada'].value_counts().reset_index()
+        df_ranking_rodada.columns = ['Rodada', 'Cantidad de Préstamos']
+        df_ranking_rodada = df_ranking_rodada.sort_values(by='Cantidad de Préstamos', ascending=False)
 
         print(tabulate(df_ranking_rodada.values, headers=['Rodada', 'Cantidad de Préstamos'], tablefmt="grid"))
         ExportarReporte(df_ranking_rodada.values, ['Rodada', 'Cantidad de Préstamos'], "reporte_prestamos_por_rodada")
 
     except Exception as e:
         logging.error(f"Error en ReportePrestamosPorRodada: {str(e)}")
-        print("Ocurrió un error al generar el reporte de préstamos por rodada.")
+        print(f"Ocurrió un error al generar el reporte de préstamos por rodada: {str(e)}")
     
     MenuPreferenciasRentas()
 
@@ -918,28 +960,38 @@ def ReportePrestamosPorColor():
     try:
         print("\n\tReporte de Préstamos por Color")
 
-        if not prestamos_registrados or not unidades_registradas:
+        if not prestamos_registrados or not unidades_registrados:
             print("No hay datos suficientes para generar el reporte.")
             return
 
         df_prestamos = pd.DataFrame(prestamos_registrados)
-        df_unidades = pd.DataFrame(unidades_registradas)
+        df_unidades = pd.DataFrame(unidades_registrados)
 
-        df_prestamos = df_prestamos.merge(df_unidades, left_on='Clave Unidad', right_on='clave', how='left')
+        # Asegurarse de que 'Clave Unidad' y 'clave' sean del mismo tipo (string)
+        df_prestamos['Clave Unidad'] = df_prestamos['Clave Unidad'].astype(str)
+        df_unidades['clave'] = df_unidades['clave'].astype(str)
+
+        # Realizar el merge
+        df_prestamos = df_prestamos.merge(df_unidades[['clave', 'color']], left_on='Clave Unidad', right_on='clave', how='left')
+
+        if 'color' not in df_prestamos.columns:
+            print("La columna 'color' no está presente después del merge.")
+            return
 
         if df_prestamos['color'].isnull().all():
             print("No hay datos válidos de color para generar el reporte.")
             return
 
-        df_ranking_color = df_prestamos.groupby('color').size().reset_index(name='Cantidad de Prestamos')
-        df_ranking_color = df_ranking_color.sort_values(by='Cantidad de Prestamos', ascending=False)
+        df_ranking_color = df_prestamos['color'].value_counts().reset_index()
+        df_ranking_color.columns = ['Color', 'Cantidad de Préstamos']
+        df_ranking_color = df_ranking_color.sort_values(by='Cantidad de Préstamos', ascending=False)
 
         print(tabulate(df_ranking_color.values, headers=['Color', 'Cantidad de Préstamos'], tablefmt="grid"))
         ExportarReporte(df_ranking_color.values, ['Color', 'Cantidad de Préstamos'], "reporte_prestamos_por_color")
 
     except Exception as e:
         logging.error(f"Error en ReportePrestamosPorColor: {str(e)}")
-        print("Ocurrió un error al generar el reporte de préstamos por color.")
+        print(f"Ocurrió un error al generar el reporte de préstamos por color: {str(e)}")
     
     MenuPreferenciasRentas()
 
