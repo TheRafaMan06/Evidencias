@@ -232,10 +232,10 @@ def RegistrarCliente():
         if apellidos.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if 1 <= len(apellidos) <= 40 and apellidos.replace(" ", "").isalpha():
+        if 1 <= len(apellidos) <= 40:
             break
         else:
-            print("Apellidos inválidos. Deben contener entre 1 y 40 caracteres y solo letras.")
+            print("Apellidos inválidos. Deben contener entre 1 y 40 caracteres.")
     
     # Validar nombres
     while True:
@@ -243,10 +243,10 @@ def RegistrarCliente():
         if nombres.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuCliente()
-        if 1 <= len(nombres) <= 40 and nombres.replace(" ", "").isalpha():
+        if 1 <= len(nombres) <= 40:
             break
         else:
-            print("Nombres inválidos. Deben contener entre 1 y 40 caracteres y solo letras.")
+            print("Nombres inválidos. Deben contener entre 1 y 40 caracteres.")
     
     # Validar teléfono
     while True:
@@ -732,17 +732,17 @@ def VerPrestamosNoDevueltos():
 def BuscarPrestamosPorFechas():
     # Solicitar fechas de inicio y retorno
     while True:
-        fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato MM-DD-AAAA): ")
+        fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato YYYY-MM-DD): ")
         try:
-            fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y")
+            fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
             break
         except ValueError:
             print("Formato de fecha inválido. Intente de nuevo.")
 
     while True:
-        fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato MM-DD-AAAA): ")
+        fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato YYYY-MM-DD): ")
         try:
-            fecha_retorno = datetime.strptime(fecha_retorno, "%m-%d-%Y")
+            fecha_retorno = datetime.strptime(fecha_retorno, "%Y-%m-%d")
             if fecha_retorno >= fecha_inicio:
                 break
             else:
@@ -751,21 +751,21 @@ def BuscarPrestamosPorFechas():
             print("Formato de fecha inválido. Intente de nuevo.")
 
     # Filtrar los préstamos que se encuentren dentro del rango de fechas
-    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%m-%d-%Y") <= fecha_retorno]
+    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%Y-%m-%d") <= fecha_retorno]
 
     if not prestamos_encontrados:
-        print(f"No se encontraron préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}.")
+        print(f"No se encontraron préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}.")
         return
     
     # Mostrar los préstamos encontrados
-    print(f"\n\tListado de Préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}")
+    print(f"\n\tListado de Préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}")
     headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"]
-    datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], datetime.strptime(p["Fecha Prestamo"], "%m-%d-%Y").strftime("%m-%d-%Y"), p["Días Prestamo"], datetime.strptime(p["Fecha Retorno"], "%m-%d-%Y").strftime("%m-%d-%Y")] for p in prestamos_encontrados]
+    datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]] for p in prestamos_encontrados]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     # Exportar el reporte si es necesario
-    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.strftime('%m-%d-%Y')}_a_{fecha_retorno.strftime('%m-%d-%Y')}")
+    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.date()}_a_{fecha_retorno.date()}")
     
     MenuReportes()
 
