@@ -428,35 +428,57 @@ def MostrarPrestamosPendientes():
         tabla = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"]] for p in prestamos_pendientes]
         print(tabulate(tabla, headers=["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo"], tablefmt="grid"))
     
-
 def RegistrarRetorno():
+    while True:
+        MostrarPrestamosPendientes()
 
-    MostrarPrestamosPendientes()
-
-    folio = input("Ingrese el folio del préstamo a retornar: ")
-    
-    prestamo = next((p for p in prestamos_registrados if str(p["Folio"]) == folio), None)
-    
-    if prestamo is None:
-        print(f"No se encontró un préstamo con el folio {folio}.")
-        MenuRetorno()
-        return
-    
-    if prestamo["Fecha Retorno"] != "":
-        print(f"El préstamo con folio {folio} ya ha sido retornado.")
-        MenuRetorno()
-        return
-    
-    fecha_actual = datetime.now().strftime("%m-%d-%Y")
-    prestamo["Fecha Retorno"] = fecha_actual
-    
-    guardar_todos_los_datos()
-    
-    print(f"\nPréstamo con folio {folio} ha sido marcado como retornado en la fecha {fecha_actual}.")
-    print("\nDatos actualizados del préstamo:")
-    print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
-    
-    MenuRetorno()
+        folio = input("Ingrese el folio del préstamo a retornar (o 'cancelar' para volver al menú): ")
+        
+        if folio.lower() == 'cancelar':
+            print("Operación cancelada.")
+            return MenuRetorno()
+        
+        if not folio.isdigit():
+            print("Error: El folio debe ser un número entero positivo.")
+            continue
+        
+        prestamo = next((p for p in prestamos_registrados if p["Folio"] == int(folio)), None)
+        
+        if prestamo is None:
+            print(f"Error: No se encontró un préstamo con el folio {folio}.")
+            continue
+        
+        if prestamo["Fecha Retorno"]:
+            print(f"Error: El préstamo con folio {folio} ya ha sido retornado en la fecha {prestamo['Fecha Retorno']}.")
+            continue
+        
+        fecha_actual = datetime.now().date()
+        fecha_prestamo = datetime.strptime(prestamo["Fecha Prestamo"], "%m-%d-%Y").date()
+        dias_prestamo = prestamo["Días Prestamo"]
+        fecha_limite = fecha_prestamo + timedelta(days=dias_prestamo)
+        
+        if fecha_actual > fecha_limite:
+            dias_retraso = (fecha_actual - fecha_limite).days
+            print(f"Advertencia: El préstamo está retrasado por {dias_retraso} día(s).")
+        
+        confirmacion = input(f"¿Está seguro de que desea registrar el retorno del préstamo {folio}? (s/n): ")
+        if confirmacion.lower() != 's':
+            print("Operación cancelada.")
+            continue
+        
+        prestamo["Fecha Retorno"] = fecha_actual.strftime("%m-%d-%Y")
+        
+        try:
+            guardar_todos_los_datos()
+            print(f"\nPréstamo con folio {folio} ha sido marcado como retornado en la fecha {prestamo['Fecha Retorno']}.")
+            print("\nDatos actualizados del préstamo:")
+            print(tabulate([prestamo.values()], headers=prestamo.keys(), tablefmt="grid"))
+            input("\nPresione Enter para continuar...")
+            return MenuRetorno()
+        except Exception as e:
+            print(f"Error al guardar los datos: {str(e)}")
+            print("Los cambios no se han guardado. Por favor, inténtelo de nuevo.")
+            continue
 
 def ExportarReporte(datos, headers, nombre_archivo):
     while True:
@@ -567,38 +589,48 @@ def MenuReportes():
 
 def ReporteRetrasos():
     print("\n\tReporte de Préstamos con Retraso")
+    print("\nPara cancelar en cualquier momento, escriba 'cancelar'.")
     
-    fecha_actual = datetime.now()
+    fecha_actual = datetime.now().date()
     prestamos_retrasados = []
 
     for prestamo in prestamos_registrados:
-        fecha_prestamo = datetime.strptime(prestamo["Fecha Prestamo"], "%m-%d-%Y")
-        fecha_debida = fecha_prestamo + timedelta(days=int(prestamo["Días Prestamo"]))
-        
-        if prestamo["Fecha Retorno"] == "":
-            dias_retraso = (fecha_actual - fecha_debida).days
-        else:
-            fecha_retorno = datetime.strptime(prestamo["Fecha Retorno"], "%m-%d-%Y")
-            dias_retraso = (fecha_retorno - fecha_debida).days
+        try:
+            if input("\nProcesando préstamos... Presione Enter para continuar o escriba 'cancelar' para salir: ").lower() == 'cancelar':
+                print("Operación cancelada.")
+                return MenuReportes()
 
-        if dias_retraso > 0:
-            unidad = next((u for u in unidades_registrados if u["clave"] == prestamo["Clave Unidad"]), None)
-            cliente = next((c for c in clientes_registrados if c["clave_cliente"] == prestamo["Clave Cliente"]), None)
+            fecha_prestamo = datetime.strptime(prestamo["Fecha Prestamo"], "%m-%d-%Y").date()
+            fecha_debida = fecha_prestamo + timedelta(days=int(prestamo["Días Prestamo"]))
             
-            prestamos_retrasados.append({
-                "Días de retraso": dias_retraso,
-                "Fecha de retorno": prestamo["Fecha Retorno"] if prestamo["Fecha Retorno"] != "" else "No retornado",
-                "Fecha en que se debió haber retornado": fecha_debida.strftime("%m-%d-%Y"),
-                "Clave de unidad": prestamo["Clave Unidad"],
-                "Rodada": unidad["rodada"] if unidad else "N/A",
-                "Color": unidad["color"] if unidad else "N/A",
-                "Nombre completo del cliente": f"{cliente['nombres']} {cliente['apellidos']}" if cliente else "N/A",
-                "Teléfono de contacto": cliente["telefono"] if cliente else "N/A"
-            })
+            if not prestamo["Fecha Retorno"]:
+                dias_retraso = (fecha_actual - fecha_debida).days
+                fecha_retorno = "No retornado"
+            else:
+                fecha_retorno = datetime.strptime(prestamo["Fecha Retorno"], "%m-%d-%Y").date()
+                dias_retraso = (fecha_retorno - fecha_debida).days
+
+            if dias_retraso > 0:
+                unidad = next((u for u in unidades_registrados if u["clave"] == prestamo["Clave Unidad"]), None)
+                cliente = next((c for c in clientes_registrados if c["clave_cliente"] == prestamo["Clave Cliente"]), None)
+                
+                prestamos_retrasados.append({
+                    "Días de retraso": dias_retraso,
+                    "Fecha de retorno": fecha_retorno if isinstance(fecha_retorno, str) else fecha_retorno.strftime("%m-%d-%Y"),
+                    "Fecha en que se debió haber retornado": fecha_debida.strftime("%m-%d-%Y"),
+                    "Clave de unidad": prestamo["Clave Unidad"],
+                    "Rodada": unidad["rodada"] if unidad else "N/A",
+                    "Color": unidad["color"] if unidad else "N/A",
+                    "Nombre completo del cliente": f"{cliente['nombres']} {cliente['apellidos']}" if cliente else "N/A",
+                    "Teléfono de contacto": cliente["telefono"] if cliente else "N/A"
+                })
+        except (ValueError, KeyError) as e:
+            print(f"Error al procesar préstamo: {e}")
+            continue
 
     if not prestamos_retrasados:
         print("No hay préstamos con retraso.")
-        return
+        return MenuReportes()
 
     prestamos_retrasados.sort(key=lambda x: x["Días de retraso"], reverse=True)
 
@@ -608,9 +640,26 @@ def ReporteRetrasos():
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
-    ExportarReporte(datos, headers, "reporte_prestamos_retrasados")
-    
-    MenuReportes()
+    while True:
+        opcion = input("\n¿Desea exportar el reporte? (s/n) o escriba 'cancelar' para salir: ").lower()
+        if opcion == 'cancelar':
+            print("Operación cancelada.")
+            return MenuReportes()
+        elif opcion == 's':
+            try:
+                ExportarReporte(datos, headers, "reporte_prestamos_retrasados")
+                print("\nReporte exportado exitosamente.")
+            except Exception as e:
+                print(f"\nError al exportar el reporte: {e}")
+            break
+        elif opcion == 'n':
+            break
+        else:
+            print("Opción no válida. Por favor, ingrese 's' para sí, 'n' para no, o 'cancelar' para salir.")
+
+    input("\nPresione Enter para volver al menú de reportes (o escriba 'cancelar' para salir): ")
+    return MenuReportes()
+
 
 def MenuListadoUnidades():
     print("Menú Principal > Menu Informes > Menu Reportes > Menu Listado de Unidades")
@@ -730,17 +779,27 @@ def VerPrestamosNoDevueltos():
     MenuReportes()
 
 def BuscarPrestamosPorFechas():
+    print("Ingrese las fechas para buscar los préstamos. Escriba 'cancelar' en cualquier momento para salir.")
+
     # Solicitar fechas de inicio y retorno
     while True:
         fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato MM-DD-YYYY): ")
+        if fecha_inicio.lower() == "cancelar":
+            print("Búsqueda cancelada. Volviendo al menú de reportes.")
+            MenuReportes()
+            return
         try:
             fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y")
             break
         except ValueError:
-            print("Formato de fecha inválido. Intente de nuevo.")
+            print("Formato de fecha inválido. Intente de nuevo o escriba 'cancelar' para salir.")
 
     while True:
         fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato MM-DD-YYYY): ")
+        if fecha_retorno.lower() == "cancelar":
+            print("Búsqueda cancelada. Volviendo al menú de reportes.")
+            MenuReportes()
+            return
         try:
             fecha_retorno = datetime.strptime(fecha_retorno, "%m-%d-%Y")
             if fecha_retorno >= fecha_inicio:
@@ -748,10 +807,18 @@ def BuscarPrestamosPorFechas():
             else:
                 print("La fecha de retorno no puede ser anterior a la fecha de inicio.")
         except ValueError:
-            print("Formato de fecha inválido. Intente de nuevo.")
+            print("Formato de fecha inválido. Intente de nuevo o escriba 'cancelar' para salir.")
+
+    # Verificar si existen préstamos registrados
+    if not prestamos_registrados:
+        print("No hay préstamos registrados.")
+        return
 
     # Filtrar los préstamos que se encuentren dentro del rango de fechas
-    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%m-%d-%Y") <= fecha_retorno]
+    prestamos_encontrados = [
+        p for p in prestamos_registrados
+        if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%m-%d-%Y") <= fecha_retorno
+    ]
 
     if not prestamos_encontrados:
         print(f"No se encontraron préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}.")
@@ -760,13 +827,20 @@ def BuscarPrestamosPorFechas():
     # Mostrar los préstamos encontrados
     print(f"\n\tListado de Préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}")
     headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"]
-    datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]] for p in prestamos_encontrados]
+    datos = [
+        [p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]]
+        for p in prestamos_encontrados
+    ]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     # Exportar el reporte si es necesario
-    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.strftime('%m-%d-%Y')}_a_{fecha_retorno.strftime('%m-%d-%Y')}")
+    try:
+        ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.strftime('%m-%d-%Y')}_a_{fecha_retorno.strftime('%m-%d-%Y')}")
+    except Exception as e:
+        print(f"Error al exportar el reporte: {e}")
     
+    # Volver al menú de reportes
     MenuReportes()
 
 def MenuAnalisis():
@@ -843,9 +917,6 @@ def RankingClientes():
         print(f"Ocurrió un error al generar el ranking de clientes: {str(e)}")
     
     MenuAnalisis()
-
-
-
 
 
 def AnalisisDuracionPrestamos():
