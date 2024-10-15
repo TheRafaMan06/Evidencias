@@ -13,16 +13,18 @@ def main():
     MenuPrincipal()
 
 
-# Actualizar la estructura de datos de unidades
 def cargar_datos(nombre_archivo):
     try:
         with open(f"{nombre_archivo}.csv", 'r', newline='', encoding='utf-8') as archivo:
             lector = csv.DictReader(archivo)
             datos = list(lector)
             for dato in datos:
+                # Convertir campos de clave a enteros
                 for clave in ['clave', 'clave_cliente', 'Folio']:
-                    if clave in dato:
-                        dato[clave] = f"{int(dato[clave]):03d}"
+                    if clave in dato and dato[clave].isdigit():
+                        dato[clave] = int(dato[clave])
+                
+                # Convertir otros campos numéricos a enteros
                 for clave in ['Clave Unidad', 'Clave Cliente', 'Días Prestamo']:
                     if clave in dato and dato[clave].isdigit():
                         dato[clave] = int(dato[clave])
@@ -99,10 +101,10 @@ def ConfirmarSalida():
 
 def generar_siguiente_clave(lista_datos, clave_campo):
     if not lista_datos:
-        return "001"
+        return "1"
     claves_existentes = [int(item[clave_campo]) for item in lista_datos]
     siguiente_numero = max(claves_existentes) + 1
-    return f"{siguiente_numero:03d}"
+    return str(siguiente_numero)
 
 def mostrar_catalogo_unidades():
     print("\nCatálogo de Unidades:")
@@ -305,15 +307,14 @@ def RegistrarPrestamo():
         if clave_unidad.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuPrestamo()
-        if clave_unidad.isdigit():
-            clave_unidad = f"{int(clave_unidad):03d}"  # Formatear a 3 dígitos
+        if clave_unidad.isdigit() and int(clave_unidad) > 0:
             if any(unidad['clave'] == clave_unidad for unidad in unidades_registrados):
                 break
             else:
                 print("Clave de unidad no encontrada. Por favor, ingrese una clave de unidad registrada.")
         else:
             print("Clave de unidad inválida. Debe ser un número entero mayor a cero.")
-    
+        
     # Mostrar catálogo de clientes antes de pedir la clave del cliente
     mostrar_catalogo_clientes()
     
@@ -323,8 +324,7 @@ def RegistrarPrestamo():
         if clave_cliente.lower() == 'cancelar':
             print("Operación cancelada.")
             return MenuPrestamo()
-        if clave_cliente.isdigit():
-            clave_cliente = f"{int(clave_cliente):03d}"  # Formatear a 3 dígitos
+        if clave_cliente.isdigit() and int(clave_cliente) > 0:
             if any(cliente['clave_cliente'] == clave_cliente for cliente in clientes_registrados):
                 break
             else:
@@ -732,17 +732,17 @@ def VerPrestamosNoDevueltos():
 def BuscarPrestamosPorFechas():
     # Solicitar fechas de inicio y retorno
     while True:
-        fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato YYYY-MM-DD): ")
+        fecha_inicio = input("\nIngrese la fecha de inicio de préstamo (formato MM-DD-YYYY): ")
         try:
-            fecha_inicio = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+            fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y")
             break
         except ValueError:
             print("Formato de fecha inválido. Intente de nuevo.")
 
     while True:
-        fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato YYYY-MM-DD): ")
+        fecha_retorno = input("Ingrese la fecha de retorno de préstamo (formato MM-DD-YYYY): ")
         try:
-            fecha_retorno = datetime.strptime(fecha_retorno, "%Y-%m-%d")
+            fecha_retorno = datetime.strptime(fecha_retorno, "%m-%d-%Y")
             if fecha_retorno >= fecha_inicio:
                 break
             else:
@@ -751,21 +751,21 @@ def BuscarPrestamosPorFechas():
             print("Formato de fecha inválido. Intente de nuevo.")
 
     # Filtrar los préstamos que se encuentren dentro del rango de fechas
-    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%Y-%m-%d") <= fecha_retorno]
+    prestamos_encontrados = [p for p in prestamos_registrados if fecha_inicio <= datetime.strptime(p["Fecha Prestamo"], "%m-%d-%Y") <= fecha_retorno]
 
     if not prestamos_encontrados:
-        print(f"No se encontraron préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}.")
+        print(f"No se encontraron préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}.")
         return
     
     # Mostrar los préstamos encontrados
-    print(f"\n\tListado de Préstamos entre {fecha_inicio.date()} y {fecha_retorno.date()}")
+    print(f"\n\tListado de Préstamos entre {fecha_inicio.strftime('%m-%d-%Y')} y {fecha_retorno.strftime('%m-%d-%Y')}")
     headers = ["Folio", "Clave Unidad", "Clave Cliente", "Fecha Prestamo", "Días Prestamo", "Fecha Retorno"]
     datos = [[p["Folio"], p["Clave Unidad"], p["Clave Cliente"], p["Fecha Prestamo"], p["Días Prestamo"], p["Fecha Retorno"]] for p in prestamos_encontrados]
     
     print(tabulate(datos, headers=headers, tablefmt="grid"))
     
     # Exportar el reporte si es necesario
-    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.date()}_a_{fecha_retorno.date()}")
+    ExportarReporte(datos, headers, f"prestamos_{fecha_inicio.strftime('%m-%d-%Y')}_a_{fecha_retorno.strftime('%m-%d-%Y')}")
     
     MenuReportes()
 
