@@ -6,7 +6,10 @@ from tabulate import tabulate
 import pandas as pd
 import numpy as np
 from collections import Counter
+import matplotlib
+matplotlib.use('TkAgg') 
 import matplotlib.pyplot as plt
+plt.ion()  
 import openpyxl
 import csv
 import os
@@ -888,9 +891,8 @@ def analisis_duracion_prestamos(conn):
         
         # Presentar resultados
         print("\n=== ANÁLISIS DE DURACIÓN DE PRÉSTAMOS ===")
-        tabla_stats = [[k, round(v, 2)] for k, v in stats.items()]
+        tabla_stats = [[k, round(v, 2) if pd.notnull(v) else 'N/A'] for k, v in stats.items()]
         print(tabulate(tabla_stats, headers=["Estadístico", "Valor"]))
-        input("\nPresione Enter para continuar...")
         
     except sqlite3.Error as e:
         print(f"Error al analizar duración de préstamos: {e}")
@@ -908,6 +910,7 @@ def ranking_clientes(conn):
             LEFT JOIN Prestamos p ON c.clave = p.clave_cliente
             GROUP BY c.clave
             ORDER BY total_prestamos DESC
+            LIMIT 10
         """
         df = pd.read_sql_query(query, conn)
         
@@ -917,42 +920,10 @@ def ranking_clientes(conn):
         
         print("\n=== RANKING DE CLIENTES ===")
         print(tabulate(df.values, headers=["Total Préstamos", "Clave", "Nombre Completo", "Teléfono"]))
-        input("\nPresione Enter para continuar...")
         
     except sqlite3.Error as e:
         print(f"Error al generar ranking de clientes: {e}")
 
-def preferencias_por_rodada(conn):
-    """2.7.3.1. Análisis de preferencias por rodada"""
-    try:
-        query = """
-            SELECT 
-                u.rodada,
-                COUNT(p.folio) as total_prestamos
-            FROM Unidad u
-            LEFT JOIN Prestamos p ON u.clave = p.clave_unidad
-            GROUP BY u.rodada
-            ORDER BY total_prestamos DESC
-        """
-        df = pd.read_sql_query(query, conn)
-        
-        if df.empty:
-            print("\nNo hay datos suficientes para el análisis")
-            return
-        
-        print("\n=== PREFERENCIAS POR RODADA ===")
-        print(tabulate(df.values, headers=["Rodada", "Total Préstamos"]))
-        
-        # Crear gráfica de pastel
-        plt.figure(figsize=(10, 8))
-        plt.pie(df['total_prestamos'], labels=df['rodada'], autopct='%1.1f%%')
-        plt.title('Distribución de Préstamos por Rodada')
-        plt.show()
-        
-        input("\nPresione Enter para continuar...")
-        
-    except sqlite3.Error as e:
-        print(f"Error al analizar preferencias por rodada: {e}")
 
 def preferencias_por_color(conn):
     """2.7.3.2. Análisis de preferencias por color"""
@@ -979,9 +950,18 @@ def preferencias_por_color(conn):
         plt.figure(figsize=(10, 8))
         plt.pie(df['total_prestamos'], labels=df['color'], autopct='%1.1f%%')
         plt.title('Distribución de Préstamos por Color')
-        plt.show()
+        
+        # Agregar leyenda
+        plt.legend(labels=[f'{c}' for c in df['color']], 
+                  title="Colores",
+                  loc="center left",
+                  bbox_to_anchor=(1, 0, 0.5, 1))
+        
+        plt.draw()
+        plt.pause(0.1)
         
         input("\nPresione Enter para continuar...")
+        plt.close()
         
     except sqlite3.Error as e:
         print(f"Error al analizar preferencias por color: {e}")
@@ -989,42 +969,73 @@ def preferencias_por_color(conn):
 def preferencias_por_dia(conn):
     """2.7.3.3. Análisis de preferencias por día de la semana"""
     try:
+        # Consulta corregida para interpretar correctamente el formato de fecha mm-dd-yyyy
         query = """
             SELECT 
-                strftime('%w', fecha_prestamo) as dia_semana,
+                CAST(strftime('%w', date(substr(fecha_prestamo, 7, 4) || '-' || 
+                                     substr(fecha_prestamo, 1, 2) || '-' || 
+                                     substr(fecha_prestamo, 4, 2))) AS INTEGER) as dia_semana,
                 COUNT(*) as total_prestamos
-            FROM Prestamos
+            FROM Prestamos 
+            WHERE fecha_prestamo IS NOT NULL
             GROUP BY dia_semana
             ORDER BY dia_semana
         """
         df = pd.read_sql_query(query, conn)
         
-        if df.empty:
-            print("\nNo hay datos suficientes para el análisis")
-            return
+        # Crear DataFrame base con todos los días
+        dias_completos = pd.DataFrame({
+            'dia_semana': list(range(7)),
+            'total_prestamos': [0] * 7
+        })
+        
+        # Si hay datos, actualizar los totales
+        if not df.empty:
+            for _, row in df.iterrows():
+                idx = row['dia_semana']
+                dias_completos.loc[dias_completos['dia_semana'] == idx, 'total_prestamos'] = row['total_prestamos']
         
         # Mapear números a nombres de días
         dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-        df['dia'] = df['dia_semana'].apply(lambda x: dias[int(x)])
+        dias_completos['dia'] = dias_completos['dia_semana'].apply(lambda x: dias[x])
         
         print("\n=== PREFERENCIAS POR DÍA DE LA SEMANA ===")
-        print(tabulate(df[['dia', 'total_prestamos']].values, 
+        print(tabulate(dias_completos[['dia', 'total_prestamos']].values, 
                       headers=["Día", "Total Préstamos"]))
         
         # Crear gráfica de barras
         plt.figure(figsize=(12, 6))
-        plt.bar(df['dia'], df['total_prestamos'])
+        bars = plt.bar(dias_completos['dia'], dias_completos['total_prestamos'])
         plt.title('Préstamos por Día de la Semana')
         plt.xticks(rotation=45)
         plt.xlabel('Día')
         plt.ylabel('Total de Préstamos')
+        
+        # Añadir valores encima de las barras
+        for bar in bars:
+            height = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2., height,
+                    f'{int(height)}',
+                    ha='center', va='bottom')
+        
         plt.tight_layout()
-        plt.show()
+        plt.draw()
+        plt.pause(0.1)
         
         input("\nPresione Enter para continuar...")
+        plt.close()
         
     except sqlite3.Error as e:
         print(f"Error al analizar preferencias por día: {e}")
+        print("Query utilizada:", query)
+        cursor = conn.cursor()
+        cursor.execute("SELECT fecha_prestamo FROM Prestamos LIMIT 1")
+        print("Ejemplo de fecha en la base de datos:", cursor.fetchone()[0])
+    except Exception as e:
+        print(f"Error inesperado: {e}")
+        print(f"Tipos de datos - dias_completos: {dias_completos.dtypes}")
+        if 'df' in locals():
+            print(f"Tipos de datos - df: {df.dtypes}")
 
 def menu_preferencias_rentas(conn):
     """2.7.3. Menú de preferencias de rentas"""
@@ -1080,36 +1091,47 @@ def menu_analisis(conn):
         else:
             print("\nOpción no válida")
 
-def menu_preferencias_rentas(conn):
-    while True:
-        mostrar_ruta("Menú Principal", "Informes", "Análisis", "Preferencias de rentas")
-        print("\n=== PREFERENCIAS DE RENTAS ===")
-        print("1. Por rodada")
-        print("2. Por color")
-        print("3. Por día de la semana")
-        print("4. Volver al menú de análisis")
+def preferencias_por_rodada(conn):
+    """2.7.3.1. Análisis de preferencias por rodada"""
+    try:
+        query = """
+            SELECT 
+                u.rodada,
+                COUNT(p.folio) as total_prestamos
+            FROM Unidad u
+            LEFT JOIN Prestamos p ON u.clave = p.clave_unidad
+            GROUP BY u.rodada
+            ORDER BY total_prestamos DESC
+        """
+        df = pd.read_sql_query(query, conn)
         
-        opcion = input("\nSeleccione una opción: ")
-        
-        if opcion == "1":
-            mostrar_ruta("Menú Principal", "Informes", "Análisis", "Preferencias de rentas", "Por rodada")
-            preferencias_por_rodada(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de preferencias
-        elif opcion == "2":
-            mostrar_ruta("Menú Principal", "Informes", "Análisis", "Preferencias de rentas", "Por color")
-            preferencias_por_color(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de preferencias
-        elif opcion == "3":
-            mostrar_ruta("Menú Principal", "Informes", "Análisis", "Preferencias de rentas", "Por día")
-            preferencias_por_dia(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de preferencias
-        elif opcion == "4":
+        if df.empty:
+            print("\nNo hay datos suficientes para el análisis")
             return
-        else:
-            print("\nOpción no válida")
+        
+        print("\n=== PREFERENCIAS POR RODADA ===")
+        print(tabulate(df.values, headers=["Rodada", "Total Préstamos"]))
+        
+        # Crear gráfica de pastel
+        plt.figure(figsize=(10, 8))
+        plt.pie(df['total_prestamos'], labels=df['rodada'], autopct='%1.1f%%')
+        plt.title('Distribución de Préstamos por Rodada')
+        
+        # Agregar leyenda
+        plt.legend(labels=[f'Rodada {r}' for r in df['rodada']], 
+                  title="Rodadas",
+                  loc="center left",
+                  bbox_to_anchor=(1, 0, 0.5, 1))
+        
+        plt.draw()
+        plt.pause(0.1)
+        
+        input("\nPresione Enter para continuar...")
+        plt.close()
+        
+    except sqlite3.Error as e:
+        print(f"Error al analizar preferencias por rodada: {e}")
+
 
 def confirmar_salida():
     while True:
@@ -1169,10 +1191,12 @@ def mostrar_listado_completo(conn):
             print("\nNo hay unidades registradas en el sistema")
             return
         
+        headers = ["Clave", "Rodada", "Color", "Estado"]
         print("\n=== LISTADO COMPLETO DE UNIDADES ===")
-        print(tabulate(unidades, headers=["Clave", "Rodada", "Color", "Estado"]))
+        print(tabulate(unidades, headers=headers))
         
-        exportar_reporte(unidades, headers, "listado_unidades")
+        # Ofrecer exportación
+        exportar_reporte(unidades, headers, "listado_unidades_completo")
         
     except sqlite3.Error as e:
         print(f"Error al generar listado de unidades: {e}")
@@ -1202,11 +1226,13 @@ def mostrar_listado_por_rodada(conn):
                 print(f"\nNo hay unidades registradas con rodada {rodada}")
                 continue
             
+            headers = ["Clave", "Color"]
             print(f"\n=== UNIDADES CON RODADA {rodada} ===")
-            print(tabulate(unidades, headers=["Clave", "Color"]))
+            print(tabulate(unidades, headers=headers))
+            
+            # Ofrecer exportación
+            exportar_reporte(unidades, headers, f'listado_unidades_rodada_{rodada}')
             break
-        
-        exportar_reporte(unidades, headers, 'Listado_por_rodada')
         
     except sqlite3.Error as e:
         print(f"Error al generar listado por rodada: {e}")
@@ -1223,32 +1249,39 @@ def mostrar_listado_por_color(conn):
             print("\nNo hay unidades registradas en el sistema")
             return
         
+        # Crear un diccionario de colores para mapear números a colores
+        colores_dict = {str(i+1): color[0] for i, color in enumerate(colores_disponibles)}
+        
         print("\nColores disponibles:")
-        for i, color in enumerate(colores_disponibles, 1):
-            print(f"{i}. {color[0]}")
+        for num, color in colores_dict.items():
+            print(f"{num}. {color}")
         
         while True:
-            color_input = input("\nIngrese el color a consultar o 'cancelar' para salir: ").strip()
-            if color_input.lower() == 'cancelar':
+            seleccion = input("\nIngrese el número del color a consultar o 'cancelar' para salir: ").strip()
+            if seleccion.lower() == 'cancelar':
                 return
+            
+            if seleccion not in colores_dict:
+                print(f"Error: Por favor seleccione un número entre 1 y {len(colores_dict)}")
+                continue
+            
+            color_seleccionado = colores_dict[seleccion]
             
             cursor.execute("""
                 SELECT u.clave, u.rodada
                 FROM Unidad u
-                WHERE LOWER(u.color) = LOWER(?)
+                WHERE u.color = ?
                 ORDER BY u.clave
-            """, (color_input,))
+            """, (color_seleccionado,))
             unidades = cursor.fetchall()
             
-            if not unidades:
-                print(f"\nNo hay unidades registradas con el color {color_input}")
-                continue
+            headers = ["Clave", "Rodada"]
+            print(f"\n=== UNIDADES DE COLOR {color_seleccionado.upper()} ===")
+            print(tabulate(unidades, headers=headers))
             
-            print(f"\n=== UNIDADES DE COLOR {color_input.upper()} ===")
-            print(tabulate(unidades, headers=["Clave", "Rodada"]))
+            # Ofrecer exportación
+            exportar_reporte(unidades, headers, f'listado_unidades_color_{color_seleccionado}')
             break
-        
-        exportar_reporte(unidades, headers, 'Listado_por_color')
         
     except sqlite3.Error as e:
         print(f"Error al generar listado por color: {e}")
