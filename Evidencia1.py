@@ -516,7 +516,10 @@ def menu_retorno(conn):
                 c.nombres,
                 c.apellidos,
                 p.dias_prestamo,
-                DATE(p.fecha_prestamo, '+' || p.dias_prestamo || ' days') as fecha_esperada
+                date(substr(p.fecha_prestamo, 7, 4) || '-' || 
+                     substr(p.fecha_prestamo, 1, 2) || '-' || 
+                     substr(p.fecha_prestamo, 4, 2), 
+                     '+' || p.dias_prestamo || ' days') as fecha_esperada
             FROM Prestamos p
             JOIN Unidad u ON p.clave_unidad = u.clave
             JOIN Clientes c ON p.clave_cliente = c.clave
@@ -531,10 +534,10 @@ def menu_retorno(conn):
             return False
         
         print("\nPréstamos pendientes de retorno:")
-        print(tabulate(prestamos_pendientes, 
-              headers=["Folio", "Fecha Préstamo", "Clave Unidad", "Rodada", "Color",
-                      "Clave Cliente", "Nombres", "Apellidos", "Días Préstamo",
-                      "Fecha Esperada"]))
+        headers = ["Folio", "Fecha Préstamo", "Clave Unidad", "Rodada", "Color",
+                  "Clave Cliente", "Nombres", "Apellidos", "Días Préstamo",
+                  "Fecha Esperada"]
+        print(tabulate(prestamos_pendientes, headers=headers))
 
         # Validar folio
         while True:
@@ -807,9 +810,10 @@ def menu_reportes(conn):
         print("\n=== MENÚ REPORTES ===")
         print("1. Clientes")
         print("2. Listado de unidades")
-        print("3. Préstamos por retornar")
-        print("4. Préstamos por periodo")
-        print("5. Volver al menú de informes")
+        print("3. Retrasos")  # Nueva opción
+        print("4. Préstamos por retornar")
+        print("5. Préstamos por periodo")
+        print("6. Volver al menú de informes")
         
         opcion = input("\nSeleccione una opción: ")
         
@@ -817,20 +821,25 @@ def menu_reportes(conn):
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Clientes")
             mostrar_reporte_clientes(conn)
             input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de reportes
+            continue
         elif opcion == "2":
-            menu_listado_unidades(conn)  # Ya tiene su propio ciclo
-        elif opcion == "3":
+            menu_listado_unidades(conn)
+        elif opcion == "3":  # Nueva opción
+            mostrar_ruta("Menú Principal", "Informes", "Reportes", "Retrasos")
+            mostrar_reporte_retrasos(conn)
+            input("\nPresione Enter para continuar...")
+            continue
+        elif opcion == "4":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Préstamos por retornar")
             mostrar_prestamos_no_retornados(conn)
             input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de reportes
-        elif opcion == "4":
+            continue
+        elif opcion == "5":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Préstamos por periodo")
             mostrar_prestamos_periodo(conn)
             input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de reportes
-        elif opcion == "5":
+            continue
+        elif opcion == "6":
             return
         else:
             print("\nOpción no válida")
@@ -1291,6 +1300,10 @@ def mostrar_reporte_retrasos(conn):
     try:
         fecha_actual = datetime.now().date()
         
+        # Definir los headers
+        headers = ["Días de Retraso", "Fecha Debida", "Clave Unidad", "Rodada", 
+                  "Color", "Nombre Cliente", "Teléfono"]
+        
         cursor = conn.cursor()
         cursor.execute("""
             WITH PrestamosFechas AS (
@@ -1321,10 +1334,9 @@ def mostrar_reporte_retrasos(conn):
             return
         
         print("\n=== REPORTE DE RETRASOS ===")
-        print(tabulate(retrasos, 
-              headers=["Días de Retraso", "Fecha Debida", "Clave Unidad", "Rodada", 
-                      "Color", "Nombre Cliente", "Teléfono"]))
+        print(tabulate(retrasos, headers=headers))
         
+        # Ahora headers está definida cuando se llama a exportar_reporte
         exportar_reporte(retrasos, headers, "reporte_retrasos")
         
     except sqlite3.Error as e:
@@ -1343,6 +1355,7 @@ def solicitar_periodo():
             if fecha_fin.lower() == 'cancelar':
                 return None, None
             
+            # Convertir las fechas al formato correcto
             fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y").date()
             fecha_fin = datetime.strptime(fecha_fin, "%m-%d-%Y").date()
             
@@ -1362,6 +1375,10 @@ def mostrar_prestamos_no_retornados(conn):
         if fecha_inicio is None:
             return
         
+        # Definir los headers
+        headers = ["Clave Unidad", "Rodada", "Fecha Préstamo", 
+                  "Nombre Cliente", "Teléfono", "Fecha Esperada"]
+        
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
@@ -1369,12 +1386,16 @@ def mostrar_prestamos_no_retornados(conn):
                 u.rodada,
                 p.fecha_prestamo,
                 c.nombres || ' ' || c.apellidos as nombre_completo,
-                c.telefono
+                c.telefono,
+                date(substr(p.fecha_prestamo, 7, 4) || '-' || 
+                     substr(p.fecha_prestamo, 1, 2) || '-' || 
+                     substr(p.fecha_prestamo, 4, 2), 
+                     '+' || p.dias_prestamo || ' days') as fecha_esperada
             FROM Prestamos p
             JOIN Unidad u ON p.clave_unidad = u.clave
             JOIN Clientes c ON p.clave_cliente = c.clave
             WHERE p.fecha_retorno IS NULL
-              AND date(p.fecha_prestamo) BETWEEN date(?) AND date(?)
+              AND p.fecha_prestamo BETWEEN ? AND ?
             ORDER BY p.fecha_prestamo DESC
         """, (fecha_inicio.strftime("%m-%d-%Y"), fecha_fin.strftime("%m-%d-%Y")))
         prestamos = cursor.fetchall()
@@ -1384,9 +1405,7 @@ def mostrar_prestamos_no_retornados(conn):
             return
         
         print(f"\n=== PRÉSTAMOS POR RETORNAR ({fecha_inicio} a {fecha_fin}) ===")
-        print(tabulate(prestamos, 
-              headers=["Clave Unidad", "Rodada", "Fecha Préstamo", 
-                      "Nombre Cliente", "Teléfono"]))
+        print(tabulate(prestamos, headers=headers))
         
         exportar_reporte(prestamos, headers, "prestamos_no_retornados")
         
@@ -1400,18 +1419,27 @@ def mostrar_prestamos_periodo(conn):
         if fecha_inicio is None:
             return
         
+        # Definir los headers
+        headers = ["Folio", "Clave Unidad", "Rodada", "Fecha Préstamo", 
+                  "Nombre Cliente", "Teléfono", "Estado"]
+        
         cursor = conn.cursor()
         cursor.execute("""
             SELECT 
+                p.Folio,
                 u.clave as clave_unidad,
                 u.rodada,
                 p.fecha_prestamo,
                 c.nombres || ' ' || c.apellidos as nombre_completo,
-                c.telefono
+                c.telefono,
+                CASE 
+                    WHEN p.fecha_retorno IS NULL THEN 'En préstamo'
+                    ELSE 'Retornado'
+                END as estado
             FROM Prestamos p
             JOIN Unidad u ON p.clave_unidad = u.clave
             JOIN Clientes c ON p.clave_cliente = c.clave
-            WHERE date(p.fecha_prestamo) BETWEEN date(?) AND date(?)
+            WHERE p.fecha_prestamo BETWEEN ? AND ?
             ORDER BY p.fecha_prestamo DESC
         """, (fecha_inicio.strftime("%m-%d-%Y"), fecha_fin.strftime("%m-%d-%Y")))
         prestamos = cursor.fetchall()
@@ -1421,11 +1449,9 @@ def mostrar_prestamos_periodo(conn):
             return
         
         print(f"\n=== PRÉSTAMOS DEL PERÍODO ({fecha_inicio} a {fecha_fin}) ===")
-        print(tabulate(prestamos, 
-              headers=["Clave Unidad", "Rodada", "Fecha Préstamo", 
-                      "Nombre Cliente", "Teléfono"]))
+        print(tabulate(prestamos, headers=headers))
         
-        exportar_reporte(prestamos, headers, "prestamo_periodo")
+        exportar_reporte(prestamos, headers, "prestamos_periodo")
         
     except sqlite3.Error as e:
         print(f"Error al generar reporte de préstamos por período: {e}")
