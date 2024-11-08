@@ -1,11 +1,8 @@
 import sys
 import sqlite3
-from sqlite3 import Error
-from datetime import datetime, timedelta
+from datetime import datetime
 from tabulate import tabulate
 import pandas as pd
-import numpy as np
-from collections import Counter
 import matplotlib
 matplotlib.use('TkAgg') 
 import matplotlib.pyplot as plt
@@ -164,7 +161,8 @@ def mostrar_catalogo_unidades(conn, solo_disponibles=False):
         return None
     
     print("\nCatálogo de Unidades:")
-    print(tabulate(unidades, headers=["Clave", "Rodada", "Color", "Estado"]))
+    print(tabulate(unidades, headers=["Clave", "Rodada", "Color", "Estado"], 
+                  tablefmt="simple_grid", numalign="center", stralign="left"))
     return unidades
 
 def mostrar_catalogo_clientes(conn):
@@ -188,7 +186,8 @@ def mostrar_catalogo_clientes(conn):
     
     print("\nCatálogo de Clientes:")
     print(tabulate(clientes, 
-          headers=["Clave", "Apellidos", "Nombres", "Teléfono", "Préstamos Activos"]))
+          headers=["Clave", "Apellidos", "Nombres", "Teléfono", "Préstamos Activos"],
+          tablefmt="simple_grid", numalign="center", stralign="left"))
     return clientes
 
 def solicitar_clave_unidad(conn, mensaje="Ingrese la clave de la unidad: ", solo_disponibles=False):
@@ -297,8 +296,11 @@ def registrar_unidad(conn):
         )
         conn.commit()
         print(f"\nUnidad registrada exitosamente con clave: {cursor.lastrowid}")
-        input("\nPresione Enter para continuar...")
         return True
+
+    except sqlite3.Error as e:
+        print(f"Error al registrar unidad: {e}")
+        return False
 
     except sqlite3.Error as e:
         print(f"Error al registrar unidad: {e}")
@@ -377,12 +379,12 @@ def registrar_cliente(conn):
         )
         conn.commit()
         print(f"\nCliente registrado exitosamente con clave: {cursor.lastrowid}")
-        input("\nPresione Enter para continuar...")
         return True
 
     except sqlite3.Error as e:
         print(f"Error al registrar cliente: {e}")
         return False
+
 
 def registrar_prestamo(conn):
     try:
@@ -414,7 +416,7 @@ def registrar_prestamo(conn):
         cursor.execute("SELECT nombres, apellidos FROM Clientes WHERE clave = ?", (clave_cliente,))
         cliente = cursor.fetchone()
 
-        # 3. Manejar la fecha del préstamo
+        # Manejar la fecha del préstamo
         while True:
             usar_fecha_sistema = input("\n¿Desea usar la fecha actual del sistema? (s/n): ").lower().strip()
             if usar_fecha_sistema == 'cancelar':
@@ -443,7 +445,7 @@ def registrar_prestamo(conn):
             else:
                 print("Error: Ingrese 's' para sí o 'n' para no")
 
-        # 4. Validar días de préstamo
+        # Validar días de préstamo
         while True:
             dias_input = input("\nIngrese la cantidad de días del préstamo (1-14): ")
             if dias_input.lower() == 'cancelar':
@@ -460,21 +462,23 @@ def registrar_prestamo(conn):
                 print("Error: Ingrese un número válido")
 
         # Confirmación final
-        while True:
-            print("\nResumen del préstamo:")
-            print(f"Unidad: Rodada {unidad[0]}, Color {unidad[1]}")
-            print(f"Cliente: {cliente[0]} {cliente[1]}")
-            print(f"Fecha: {fecha_prestamo.strftime('%m-%d-%Y')}")
-            print(f"Días: {dias_prestamo}")
+        datos_prestamo = [
+            ['Unidad', f"Rodada {unidad[0]}, Color {unidad[1]}"],
+            ['Cliente', f"{cliente[0]} {cliente[1]}"],
+            ['Fecha', fecha_prestamo.strftime('%m-%d-%Y')],
+            ['Días', str(dias_prestamo)]
+        ]
+        
+        print("\n=== RESUMEN DEL PRÉSTAMO ===")
+        print(tabulate(datos_prestamo, tablefmt="simple_grid", stralign="left"))
             
-            confirmar = input("\n¿Desea registrar el préstamo? (s/n): ").lower()
-            if confirmar == 'n':
-                print("Operación cancelada")
-                return False
-            elif confirmar == 's':
-                break
-            else:
-                print("Por favor, ingrese 's' para confirmar o 'n' para cancelar")
+        confirmar = input("\n¿Desea registrar el préstamo? (s/n): ").lower()
+        if confirmar == 'n':
+            print("Operación cancelada")
+            return False
+        elif confirmar != 's':
+            print("Operación cancelada: Respuesta no válida")
+            return False
 
         # Registrar el préstamo
         cursor.execute("""
@@ -490,7 +494,6 @@ def registrar_prestamo(conn):
         
         conn.commit()
         print(f"\nPréstamo registrado exitosamente con folio: {cursor.lastrowid}")
-        input("\nPresione Enter para continuar...")
         return True
 
     except sqlite3.Error as e:
@@ -506,6 +509,17 @@ def menu_retorno(conn):
         
         cursor = conn.cursor()
         cursor.execute("""
+            WITH FechaEsperada AS (
+                SELECT 
+                    p.*,
+                    date(substr(p.fecha_prestamo, 7, 4) || '-' || 
+                         substr(p.fecha_prestamo, 1, 2) || '-' || 
+                         substr(p.fecha_prestamo, 4, 2), 
+                         '+' || p.dias_prestamo || ' days') as fecha_esperada
+                FROM Prestamos p
+                WHERE p.fecha_retorno IS NULL
+                AND p.fecha_prestamo IS NOT NULL
+            )
             SELECT 
                 p.Folio,
                 p.fecha_prestamo,
@@ -516,28 +530,24 @@ def menu_retorno(conn):
                 c.nombres,
                 c.apellidos,
                 p.dias_prestamo,
-                date(substr(p.fecha_prestamo, 7, 4) || '-' || 
-                     substr(p.fecha_prestamo, 1, 2) || '-' || 
-                     substr(p.fecha_prestamo, 4, 2), 
-                     '+' || p.dias_prestamo || ' days') as fecha_esperada
-            FROM Prestamos p
+                p.fecha_esperada
+            FROM FechaEsperada p
             JOIN Unidad u ON p.clave_unidad = u.clave
             JOIN Clientes c ON p.clave_cliente = c.clave
-            WHERE p.fecha_retorno IS NULL
             ORDER BY p.fecha_prestamo DESC
         """)
         prestamos_pendientes = cursor.fetchall()
         
         if not prestamos_pendientes:
             print("\nNo hay préstamos pendientes de retorno")
-            input("\nPresione Enter para continuar...")
             return False
         
         print("\nPréstamos pendientes de retorno:")
         headers = ["Folio", "Fecha Préstamo", "Clave Unidad", "Rodada", "Color",
                   "Clave Cliente", "Nombres", "Apellidos", "Días Préstamo",
                   "Fecha Esperada"]
-        print(tabulate(prestamos_pendientes, headers=headers))
+        print(tabulate(prestamos_pendientes, headers=headers, 
+                      tablefmt="simple_grid", numalign="center", stralign="left"))
 
         # Validar folio
         while True:
@@ -578,8 +588,12 @@ def menu_retorno(conn):
 
         # Confirmación final
         while True:
-            print(f"\nFecha de préstamo: {fecha_prestamo.strftime('%m-%d-%Y')}")
-            print(f"Fecha de retorno: {fecha_retorno.strftime('%m-%d-%Y')}")
+            datos_confirmacion = [
+                ['Fecha de préstamo', fecha_prestamo.strftime('%m-%d-%Y')],
+                ['Fecha de retorno', fecha_retorno.strftime('%m-%d-%Y')]
+            ]
+            print("\n=== CONFIRMAR RETORNO ===")
+            print(tabulate(datos_confirmacion, tablefmt="simple_grid", stralign="left"))
             
             confirmar = input("\n¿Desea registrar el retorno? (s/n): ").lower()
             if confirmar == 'n':
@@ -598,7 +612,6 @@ def menu_retorno(conn):
         conn.commit()
         
         print(f"\nRetorno registrado exitosamente para el folio: {folio}")
-        input("\nPresione Enter para continuar...")
         return True
 
     except sqlite3.Error as e:
@@ -678,11 +691,9 @@ def menu_registro(conn):
         if opcion == "1":
             mostrar_ruta("Menú Principal", "Registro", "Unidad")
             registrar_unidad(conn)
-            continue  # Vuelve a mostrar el menú de registro
         elif opcion == "2":
             mostrar_ruta("Menú Principal", "Registro", "Cliente")
             registrar_cliente(conn)
-            continue  # Vuelve a mostrar el menú de registro
         elif opcion == "3":
             return
         else:
@@ -712,33 +723,8 @@ def menu_informes(conn):
         else:
             print("\nOpción no válida")
 
-def exportar_reporte(datos, headers, nombre_base):
-    """
-    Función para exportar reportes a CSV o Excel
-    """
-    while True:
-        print("\n¿Desea exportar este reporte?")
-        print("1. Exportar como CSV")
-        print("2. Exportar como Excel")
-        print("3. No exportar")
-        
-        opcion = input("\nSeleccione una opción: ")
-        
-        if opcion == "1":
-            exportar_csv(datos, headers, nombre_base)
-            break
-        elif opcion == "2":
-            exportar_excel(datos, headers, nombre_base)
-            break
-        elif opcion == "3":
-            break
-        else:
-            print("Opción no válida")
 
 def exportar_csv(datos, headers, nombre_base):
-    """
-    Exporta los datos a un archivo CSV
-    """
     try:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         nombre_archivo = f"{nombre_base}_{timestamp}.csv"
@@ -754,49 +740,82 @@ def exportar_csv(datos, headers, nombre_base):
         print(f"Error al exportar a CSV: {e}")
 
 def exportar_excel(datos, headers, nombre_base):
-    """
-    Exporta los datos a un archivo Excel
-    """
     try:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = datetime.now().strftime("%m%d%y_%H%M%S")
         nombre_archivo = f"{nombre_base}_{timestamp}.xlsx"
         
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Reporte"
         
-        # Agregar encabezados
+        # Calcular número de columnas y configurar título
+        num_columnas = len(headers)
+        ultima_columna_letra = openpyxl.utils.get_column_letter(num_columnas)
+        
+        # Agregar título
+        titulo = nombre_base.replace('_', ' ').title()
+        ws.merge_cells(f'A1:{ultima_columna_letra}1')
+        celda_titulo = ws['A1']
+        celda_titulo.value = titulo
+        celda_titulo.font = openpyxl.styles.Font(bold=True, size=14)
+        celda_titulo.alignment = openpyxl.styles.Alignment(horizontal='center')
+        
+        # Agregar fecha y hora
+        fecha_hora = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        ws.merge_cells(f'A2:{ultima_columna_letra}2')
+        celda_fecha = ws['A2']
+        celda_fecha.value = f"Generado el: {fecha_hora}"
+        celda_fecha.font = openpyxl.styles.Font(italic=True)
+        celda_fecha.alignment = openpyxl.styles.Alignment(horizontal='center')
+        
+        # Estilo base para encabezados y datos
+        borde = openpyxl.styles.Border(
+            left=openpyxl.styles.Side(style='thin'),
+            right=openpyxl.styles.Side(style='thin'),
+            top=openpyxl.styles.Side(style='thin'),
+            bottom=openpyxl.styles.Side(style='thin')
+        )
+        
+        # Agregar y dar formato a encabezados
         for col, header in enumerate(headers, 1):
-            ws.cell(row=1, column=col, value=header)
-        
-        # Agregar datos
-        for row_idx, row in enumerate(datos, 2):
-            for col_idx, value in enumerate(row, 1):
-                ws.cell(row=row_idx, column=col_idx, value=value)
-        
-        # Ajustar ancho de columnas
-        for column in ws.columns:
-            max_length = 0
-            column_letter = column[0].column_letter
-            
-            for cell in column:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-                    
-            adjusted_width = (max_length + 2)
-            ws.column_dimensions[column_letter].width = adjusted_width
-        
-        # Dar formato a la fila de encabezados
-        for cell in ws[1]:
-            cell.font = openpyxl.styles.Font(bold=True)
-            cell.fill = openpyxl.styles.PatternFill(
-                start_color="CCCCCC",
-                end_color="CCCCCC",
+            celda = ws.cell(row=4, column=col, value=header)
+            celda.font = openpyxl.styles.Font(bold=True, color="FFFFFF")
+            celda.fill = openpyxl.styles.PatternFill(
+                start_color="366092",
+                end_color="366092",
                 fill_type="solid"
             )
+            celda.alignment = openpyxl.styles.Alignment(horizontal='center')
+            celda.border = borde
+        
+        # Agregar y dar formato a datos
+        for row_idx, row in enumerate(datos, 5):
+            for col_idx, value in enumerate(row, 1):
+                celda = ws.cell(row=row_idx, column=col_idx, value=value)
+                celda.alignment = openpyxl.styles.Alignment(horizontal='center')
+                celda.border = borde
+                if row_idx % 2 == 0:
+                    celda.fill = openpyxl.styles.PatternFill(
+                        start_color="F2F2F2",
+                        end_color="F2F2F2",
+                        fill_type="solid"
+                    )
+        
+        # Ajustar ancho de columnas
+        for col in range(1, len(headers) + 1):
+            max_length = 0
+            column_letter = openpyxl.utils.get_column_letter(col)
+            
+            for row in range(4, len(datos) + 5):
+                cell = ws.cell(row=row, column=col)
+                max_length = max(max_length, len(str(cell.value or '')))
+            
+            adjusted_width = max_length + 4
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        # Configurar filtros y paneles congelados
+        ws.auto_filter.ref = f"A4:{ultima_columna_letra}{len(datos) + 4}"
+        ws.freeze_panes = 'A5'
         
         wb.save(nombre_archivo)
         print(f"\nReporte exportado exitosamente como: {nombre_archivo}")
@@ -810,7 +829,7 @@ def menu_reportes(conn):
         print("\n=== MENÚ REPORTES ===")
         print("1. Clientes")
         print("2. Listado de unidades")
-        print("3. Retrasos")  # Nueva opción
+        print("3. Retrasos")
         print("4. Préstamos por retornar")
         print("5. Préstamos por periodo")
         print("6. Volver al menú de informes")
@@ -818,31 +837,232 @@ def menu_reportes(conn):
         opcion = input("\nSeleccione una opción: ")
         
         if opcion == "1":
-            mostrar_ruta("Menú Principal", "Informes", "Reportes", "Clientes")
-            mostrar_reporte_clientes(conn)
-            input("\nPresione Enter para continuar...")
-            continue
+            menu_reportes_clientes(conn)  
         elif opcion == "2":
             menu_listado_unidades(conn)
-        elif opcion == "3":  # Nueva opción
+        elif opcion == "3":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Retrasos")
             mostrar_reporte_retrasos(conn)
-            input("\nPresione Enter para continuar...")
-            continue
         elif opcion == "4":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Préstamos por retornar")
             mostrar_prestamos_no_retornados(conn)
-            input("\nPresione Enter para continuar...")
-            continue
         elif opcion == "5":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Préstamos por periodo")
             mostrar_prestamos_periodo(conn)
-            input("\nPresione Enter para continuar...")
-            continue
         elif opcion == "6":
             return
         else:
             print("\nOpción no válida")
+            
+def menu_reportes_clientes(conn):
+    """Menú para los reportes de clientes"""
+    while True:
+        mostrar_ruta("Menú Principal", "Informes", "Reportes", "Clientes")
+        print("\n=== REPORTES DE CLIENTES ===")
+        print("1. Reporte completo")
+        print("2. Cliente específico")
+        print("3. Volver al menú de reportes")
+        
+        opcion = input("\nSeleccione una opción: ")
+        
+        if opcion == "1":
+            mostrar_ruta("Menú Principal", "Informes", "Reportes", "Clientes", "Reporte completo")
+            mostrar_reporte_completo_clientes(conn)
+        elif opcion == "2":
+            mostrar_ruta("Menú Principal", "Informes", "Reportes", "Clientes", "Cliente específico")
+            mostrar_reporte_cliente_especifico(conn)
+        elif opcion == "3":
+            return
+        else:
+            print("\nOpción no válida")
+
+def exportar_reporte(datos, headers, nombre_base):
+    """
+    Función para exportar reportes a CSV o Excel
+    """
+    while True:
+        print("\n¿Desea exportar este reporte?")
+        print("1. Exportar como CSV")
+        print("2. Exportar como Excel")
+        print("3. No exportar")
+        
+        opcion = input("\nSeleccione una opción: ")
+        
+        if opcion == "1":
+            exportar_csv(datos, headers, nombre_base)
+            return
+        elif opcion == "2":
+            exportar_excel(datos, headers, nombre_base)
+            return
+        elif opcion == "3":
+            return
+        else:
+            print("Opción no válida")
+
+def mostrar_reporte_completo_clientes(conn):
+    """2.6.1. Reporte completo de clientes"""
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT 
+                c.clave,
+                c.apellidos,
+                c.nombres,
+                c.telefono,
+                COUNT(p.folio) as total_prestamos,
+                SUM(CASE 
+                    WHEN p.fecha_retorno IS NULL 
+                    AND p.fecha_prestamo IS NOT NULL 
+                    THEN 1 
+                    ELSE 0 
+                END) as prestamos_activos
+            FROM Clientes c
+            LEFT JOIN Prestamos p ON c.clave = p.clave_cliente
+            GROUP BY c.clave, c.apellidos, c.nombres, c.telefono
+            ORDER BY c.apellidos, c.nombres
+        """)
+        clientes = cursor.fetchall()
+        
+        if not clientes:
+            print("\nNo hay clientes registrados en el sistema")
+            return
+        
+        headers = ["Clave", "Apellidos", "Nombres", "Teléfono", 
+                  "Total Préstamos", "Préstamos Activos"]
+        print("\n=== REPORTE COMPLETO DE CLIENTES ===")
+        print(tabulate(clientes, 
+                      headers=headers, 
+                      tablefmt="simple_grid", 
+                      numalign="center",
+                      stralign="left"))
+        
+        # Ofrecer exportación
+        exportar_reporte(clientes, headers, "reporte_completo_clientes")
+        
+    except sqlite3.Error as e:
+        print(f"Error al generar reporte completo de clientes: {e}")
+
+def mostrar_reporte_cliente_especifico(conn):
+    """2.6.2. Cliente específico"""
+    try:
+        # Obtener y mostrar clientes disponibles con información actualizada
+        cursor = conn.cursor()
+        cursor.execute("""
+            WITH PrestamosActivos AS (
+                SELECT 
+                    clave_cliente,
+                    COUNT(*) as total_prestamos,
+                    SUM(CASE 
+                        WHEN fecha_retorno IS NULL 
+                        AND fecha_prestamo IS NOT NULL 
+                        THEN 1 
+                        ELSE 0 
+                    END) as prestamos_activos,
+                    MIN(fecha_prestamo) as primer_prestamo,
+                    MAX(fecha_prestamo) as ultimo_prestamo
+                FROM Prestamos
+                GROUP BY clave_cliente
+            )
+            SELECT 
+                c.clave,
+                c.apellidos,
+                c.nombres,
+                c.telefono,
+                COALESCE(p.total_prestamos, 0) as total_prestamos,
+                COALESCE(p.prestamos_activos, 0) as prestamos_activos,
+                p.primer_prestamo,
+                p.ultimo_prestamo
+            FROM Clientes c
+            LEFT JOIN PrestamosActivos p ON c.clave = p.clave_cliente
+            ORDER BY c.apellidos, c.nombres
+        """)
+        clientes = cursor.fetchall()
+        
+        if not clientes:
+            print("\nNo hay clientes registrados en el sistema")
+            return
+        
+        headers = ["Clave", "Apellidos", "Nombres", "Teléfono", 
+                  "Total Préstamos", "Préstamos Activos"]
+        print("\n=== CLIENTES DISPONIBLES ===")
+        print(tabulate(clientes, headers=headers, tablefmt="simple_grid", 
+                      numalign="center", stralign="left"))
+        
+        # Solicitar clave del cliente
+        while True:
+            clave_input = input("\nIngrese la clave del cliente a consultar (o 'cancelar' para salir): ")
+            if clave_input.lower() == 'cancelar':
+                return
+                
+            try:
+                clave = int(clave_input)
+                cliente_seleccionado = next((c for c in clientes if c[0] == clave), None)
+                if cliente_seleccionado:
+                    break
+                else:
+                    print("Error: Clave de cliente no válida")
+            except ValueError:
+                print("Error: Ingrese un número válido")
+        
+        # Mostrar información del cliente usando los datos ya obtenidos
+        datos_cliente = [
+            ['Clave', cliente_seleccionado[0]],
+            ['Apellidos', cliente_seleccionado[1]],
+            ['Nombres', cliente_seleccionado[2]],
+            ['Teléfono', cliente_seleccionado[3]],
+            ['Total de préstamos', cliente_seleccionado[4]],
+            ['Préstamos activos', cliente_seleccionado[5]]
+        ]
+        
+        if cliente_seleccionado[6]:  # Si hay fecha del primer préstamo
+            datos_cliente.append(['Primer préstamo', cliente_seleccionado[6]])
+        if cliente_seleccionado[7]:  # Si hay fecha del último préstamo
+            datos_cliente.append(['Último préstamo', cliente_seleccionado[7]])
+        
+        print("\n=== INFORMACIÓN DEL CLIENTE ===")
+        print(tabulate(datos_cliente, headers=['Campo', 'Valor'], 
+                      tablefmt="simple_grid", stralign="left"))
+        
+        # Obtener historial de préstamos
+        cursor.execute("""
+            SELECT 
+                p.Folio,
+                p.fecha_prestamo,
+                u.clave as clave_unidad,
+                u.rodada,
+                u.color,
+                p.dias_prestamo,
+                p.fecha_retorno,
+                CASE 
+                    WHEN p.fecha_retorno IS NULL THEN 'En préstamo'
+                    WHEN julianday(p.fecha_retorno) > julianday(date(
+                        substr(p.fecha_prestamo, 7, 4) || '-' || 
+                        substr(p.fecha_prestamo, 1, 2) || '-' || 
+                        substr(p.fecha_prestamo, 4, 2), 
+                        '+' || p.dias_prestamo || ' days'
+                    )) THEN 'Retornado con retraso'
+                    ELSE 'Retornado a tiempo'
+                END as estado
+            FROM Prestamos p
+            JOIN Unidad u ON p.clave_unidad = u.clave
+            WHERE p.clave_cliente = ?
+            ORDER BY p.fecha_prestamo DESC
+        """, (clave,))
+        prestamos = cursor.fetchall()
+        
+        if prestamos:
+            headers = ["Folio", "Fecha Préstamo", "Clave Unidad", "Rodada", 
+                      "Color", "Días Préstamo", "Fecha Retorno", "Estado"]
+            print("\n=== HISTORIAL DE PRÉSTAMOS ===")
+            print(tabulate(prestamos, headers=headers, tablefmt="simple_grid",
+                         numalign="center", stralign="left"))
+            
+            exportar_reporte(prestamos, headers, f"historial_cliente_{clave}")
+        else:
+            print("\nEl cliente no tiene préstamos registrados")
+        
+    except sqlite3.Error as e:
+        print(f"Error al generar reporte de cliente específico: {e}")
 
 def menu_listado_unidades(conn):
     while True:
@@ -858,18 +1078,12 @@ def menu_listado_unidades(conn):
         if opcion == "1":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Listado de unidades", "Completo")
             mostrar_listado_completo(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de listado
         elif opcion == "2":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Listado de unidades", "Por rodada")
             mostrar_listado_por_rodada(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de listado
         elif opcion == "3":
             mostrar_ruta("Menú Principal", "Informes", "Reportes", "Listado de unidades", "Por color")
             mostrar_listado_por_color(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de listado
         elif opcion == "4":
             return
         else:
@@ -885,7 +1099,6 @@ def analisis_duracion_prestamos(conn):
             print("\nNo hay datos de préstamos para analizar")
             return
         
-        # Cálculo de estadísticos
         stats = {
             "Media": df['dias_prestamo'].mean(),
             "Mediana": df['dias_prestamo'].median(),
@@ -898,10 +1111,10 @@ def analisis_duracion_prestamos(conn):
             "Tercer Cuartil (75%)": df['dias_prestamo'].quantile(0.75)
         }
         
-        # Presentar resultados
         print("\n=== ANÁLISIS DE DURACIÓN DE PRÉSTAMOS ===")
         tabla_stats = [[k, round(v, 2) if pd.notnull(v) else 'N/A'] for k, v in stats.items()]
-        print(tabulate(tabla_stats, headers=["Estadístico", "Valor"]))
+        print(tabulate(tabla_stats, headers=["Estadístico", "Valor"], 
+                      tablefmt="simple_grid", numalign="right", stralign="left"))
         
     except sqlite3.Error as e:
         print(f"Error al analizar duración de préstamos: {e}")
@@ -935,7 +1148,6 @@ def ranking_clientes(conn):
 
 
 def preferencias_por_color(conn):
-    """2.7.3.2. Análisis de preferencias por color"""
     try:
         query = """
             SELECT 
@@ -953,14 +1165,13 @@ def preferencias_por_color(conn):
             return
         
         print("\n=== PREFERENCIAS POR COLOR ===")
-        print(tabulate(df.values, headers=["Color", "Total Préstamos"]))
+        print(tabulate(df.values, headers=["Color", "Total Préstamos"],
+                      tablefmt="simple_grid", numalign="center", stralign="left"))
         
-        # Crear gráfica de pastel
         plt.figure(figsize=(10, 8))
         plt.pie(df['total_prestamos'], labels=df['color'], autopct='%1.1f%%')
         plt.title('Distribución de Préstamos por Color')
         
-        # Agregar leyenda
         plt.legend(labels=[f'{c}' for c in df['color']], 
                   title="Colores",
                   loc="center left",
@@ -968,17 +1179,15 @@ def preferencias_por_color(conn):
         
         plt.draw()
         plt.pause(0.1)
-        
-        input("\nPresione Enter para continuar...")
+        plt.show(block=False)
+        input()  # Esperar input sin mensaje
         plt.close()
         
     except sqlite3.Error as e:
         print(f"Error al analizar preferencias por color: {e}")
 
 def preferencias_por_dia(conn):
-    """2.7.3.3. Análisis de preferencias por día de la semana"""
     try:
-        # Consulta corregida para interpretar correctamente el formato de fecha mm-dd-yyyy
         query = """
             SELECT 
                 CAST(strftime('%w', date(substr(fecha_prestamo, 7, 4) || '-' || 
@@ -992,27 +1201,24 @@ def preferencias_por_dia(conn):
         """
         df = pd.read_sql_query(query, conn)
         
-        # Crear DataFrame base con todos los días
         dias_completos = pd.DataFrame({
             'dia_semana': list(range(7)),
             'total_prestamos': [0] * 7
         })
         
-        # Si hay datos, actualizar los totales
         if not df.empty:
             for _, row in df.iterrows():
                 idx = row['dia_semana']
                 dias_completos.loc[dias_completos['dia_semana'] == idx, 'total_prestamos'] = row['total_prestamos']
         
-        # Mapear números a nombres de días
         dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
         dias_completos['dia'] = dias_completos['dia_semana'].apply(lambda x: dias[x])
         
         print("\n=== PREFERENCIAS POR DÍA DE LA SEMANA ===")
         print(tabulate(dias_completos[['dia', 'total_prestamos']].values, 
-                      headers=["Día", "Total Préstamos"]))
+                      headers=["Día", "Total Préstamos"],
+                      tablefmt="simple_grid", numalign="center", stralign="left"))
         
-        # Crear gráfica de barras
         plt.figure(figsize=(12, 6))
         bars = plt.bar(dias_completos['dia'], dias_completos['total_prestamos'])
         plt.title('Préstamos por Día de la Semana')
@@ -1020,7 +1226,6 @@ def preferencias_por_dia(conn):
         plt.xlabel('Día')
         plt.ylabel('Total de Préstamos')
         
-        # Añadir valores encima de las barras
         for bar in bars:
             height = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2., height,
@@ -1030,21 +1235,15 @@ def preferencias_por_dia(conn):
         plt.tight_layout()
         plt.draw()
         plt.pause(0.1)
-        
-        input("\nPresione Enter para continuar...")
+        plt.show(block=False)
+        input()  # Esperar input sin mensaje
         plt.close()
         
     except sqlite3.Error as e:
         print(f"Error al analizar preferencias por día: {e}")
         print("Query utilizada:", query)
-        cursor = conn.cursor()
-        cursor.execute("SELECT fecha_prestamo FROM Prestamos LIMIT 1")
-        print("Ejemplo de fecha en la base de datos:", cursor.fetchone()[0])
     except Exception as e:
         print(f"Error inesperado: {e}")
-        print(f"Tipos de datos - dias_completos: {dias_completos.dtypes}")
-        if 'df' in locals():
-            print(f"Tipos de datos - df: {df.dtypes}")
 
 def menu_preferencias_rentas(conn):
     """2.7.3. Menú de preferencias de rentas"""
@@ -1086,22 +1285,17 @@ def menu_analisis(conn):
         if opcion == "1":
             mostrar_ruta("Menú Principal", "Informes", "Análisis", "Duración de los préstamos")
             analisis_duracion_prestamos(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de análisis
         elif opcion == "2":
             mostrar_ruta("Menú Principal", "Informes", "Análisis", "Ranking de clientes")
             ranking_clientes(conn)
-            input("\nPresione Enter para continuar...")
-            continue  # Vuelve a mostrar el menú de análisis
         elif opcion == "3":
-            menu_preferencias_rentas(conn)  # Ya tiene su propio ciclo
+            menu_preferencias_rentas(conn)
         elif opcion == "4":
             return
         else:
             print("\nOpción no válida")
 
 def preferencias_por_rodada(conn):
-    """2.7.3.1. Análisis de preferencias por rodada"""
     try:
         query = """
             SELECT 
@@ -1119,14 +1313,14 @@ def preferencias_por_rodada(conn):
             return
         
         print("\n=== PREFERENCIAS POR RODADA ===")
-        print(tabulate(df.values, headers=["Rodada", "Total Préstamos"]))
+        print(tabulate(df.values, headers=["Rodada", "Total Préstamos"],
+                      tablefmt="simple_grid", numalign="center", stralign="left"))
         
         # Crear gráfica de pastel
         plt.figure(figsize=(10, 8))
         plt.pie(df['total_prestamos'], labels=df['rodada'], autopct='%1.1f%%')
         plt.title('Distribución de Préstamos por Rodada')
         
-        # Agregar leyenda
         plt.legend(labels=[f'Rodada {r}' for r in df['rodada']], 
                   title="Rodadas",
                   loc="center left",
@@ -1134,8 +1328,8 @@ def preferencias_por_rodada(conn):
         
         plt.draw()
         plt.pause(0.1)
-        
-        input("\nPresione Enter para continuar...")
+        plt.show(block=False)
+        input()  # Esperar input sin mensaje
         plt.close()
         
     except sqlite3.Error as e:
@@ -1150,7 +1344,7 @@ def confirmar_salida():
         elif confirmacion == 'n':
             return False
         else:
-            print("Por favor, ingrese 's' para sí o 'n' para no")
+            print("Por favor, ingrese 's' para sí o 'n' para cancelar")
 
 def mostrar_reporte_clientes(conn):
     """2.6.1. Reporte de clientes"""
@@ -1334,9 +1528,9 @@ def mostrar_reporte_retrasos(conn):
             return
         
         print("\n=== REPORTE DE RETRASOS ===")
-        print(tabulate(retrasos, headers=headers))
+        print(tabulate(retrasos, headers=headers, tablefmt="simple_grid",
+                      numalign="center", stralign="left"))
         
-        # Ahora headers está definida cuando se llama a exportar_reporte
         exportar_reporte(retrasos, headers, "reporte_retrasos")
         
     except sqlite3.Error as e:
@@ -1369,13 +1563,11 @@ def solicitar_periodo():
             print("Error: Formato de fecha inválido. Use mm-dd-yyyy")
 
 def mostrar_prestamos_no_retornados(conn):
-    """2.6.6. Préstamos por retornar en período"""
     try:
         fecha_inicio, fecha_fin = solicitar_periodo()
         if fecha_inicio is None:
             return
         
-        # Definir los headers
         headers = ["Clave Unidad", "Rodada", "Fecha Préstamo", 
                   "Nombre Cliente", "Teléfono", "Fecha Esperada"]
         
@@ -1405,7 +1597,8 @@ def mostrar_prestamos_no_retornados(conn):
             return
         
         print(f"\n=== PRÉSTAMOS POR RETORNAR ({fecha_inicio} a {fecha_fin}) ===")
-        print(tabulate(prestamos, headers=headers))
+        print(tabulate(prestamos, headers=headers, tablefmt="simple_grid", 
+                      numalign="center", stralign="left"))
         
         exportar_reporte(prestamos, headers, "prestamos_no_retornados")
         
@@ -1419,7 +1612,6 @@ def mostrar_prestamos_periodo(conn):
         if fecha_inicio is None:
             return
         
-        # Definir los headers
         headers = ["Folio", "Clave Unidad", "Rodada", "Fecha Préstamo", 
                   "Nombre Cliente", "Teléfono", "Estado"]
         
