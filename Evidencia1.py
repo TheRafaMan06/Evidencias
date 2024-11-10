@@ -171,11 +171,20 @@ def mostrar_catalogo_clientes(conn):
     """
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT c.clave, c.apellidos, c.nombres, c.telefono,
-               COUNT(CASE WHEN p.fecha_retorno IS NULL THEN 1 END) as prestamos_activos
+        SELECT 
+            c.clave, 
+            c.apellidos, 
+            c.nombres, 
+            c.telefono,
+            SUM(CASE 
+                WHEN p.fecha_retorno IS NULL 
+                AND p.Folio IS NOT NULL 
+                THEN 1 
+                ELSE 0 
+            END) as prestamos_activos
         FROM Clientes c
         LEFT JOIN Prestamos p ON c.clave = p.clave_cliente
-        GROUP BY c.clave
+        GROUP BY c.clave, c.apellidos, c.nombres, c.telefono
         ORDER BY c.apellidos, c.nombres
     """)
     
@@ -508,18 +517,8 @@ def menu_retorno(conn):
         print("\nPara cancelar el registro en cualquier momento, escriba 'cancelar'")
         
         cursor = conn.cursor()
+        # Consulta simplificada que muestra todos los préstamos sin retorno
         cursor.execute("""
-            WITH FechaEsperada AS (
-                SELECT 
-                    p.*,
-                    date(substr(p.fecha_prestamo, 7, 4) || '-' || 
-                         substr(p.fecha_prestamo, 1, 2) || '-' || 
-                         substr(p.fecha_prestamo, 4, 2), 
-                         '+' || p.dias_prestamo || ' days') as fecha_esperada
-                FROM Prestamos p
-                WHERE p.fecha_retorno IS NULL
-                AND p.fecha_prestamo IS NOT NULL
-            )
             SELECT 
                 p.Folio,
                 p.fecha_prestamo,
@@ -530,10 +529,14 @@ def menu_retorno(conn):
                 c.nombres,
                 c.apellidos,
                 p.dias_prestamo,
-                p.fecha_esperada
-            FROM FechaEsperada p
+                date(substr(p.fecha_prestamo, 7, 4) || '-' || 
+                     substr(p.fecha_prestamo, 1, 2) || '-' || 
+                     substr(p.fecha_prestamo, 4, 2), 
+                     '+' || p.dias_prestamo || ' days') as fecha_esperada
+            FROM Prestamos p
             JOIN Unidad u ON p.clave_unidad = u.clave
             JOIN Clientes c ON p.clave_cliente = c.clave
+            WHERE p.fecha_retorno IS NULL
             ORDER BY p.fecha_prestamo DESC
         """)
         prestamos_pendientes = cursor.fetchall()
@@ -549,7 +552,7 @@ def menu_retorno(conn):
         print(tabulate(prestamos_pendientes, headers=headers, 
                       tablefmt="simple_grid", numalign="center", stralign="left"))
 
-        # Validar folio
+        # El resto del código permanece igual
         while True:
             folio_input = input("\nIngrese el folio del préstamo a retornar: ")
             if folio_input.lower() == 'cancelar':
@@ -565,12 +568,10 @@ def menu_retorno(conn):
             except ValueError:
                 print("Error: Ingrese un número válido")
 
-        # Obtener fecha del préstamo
         cursor.execute("SELECT fecha_prestamo FROM Prestamos WHERE Folio = ?", (folio,))
         fecha_prestamo = cursor.fetchone()[0]
         fecha_prestamo = datetime.strptime(fecha_prestamo, "%m-%d-%Y")
 
-        # Validar fecha de retorno
         while True:
             fecha_input = input("\nIngrese la fecha de retorno (mm-dd-yyyy): ")
             if fecha_input.lower() == 'cancelar':
@@ -586,7 +587,6 @@ def menu_retorno(conn):
             except ValueError:
                 print("Error: Formato de fecha inválido. Use mm-dd-yyyy")
 
-        # Confirmación final
         while True:
             datos_confirmacion = [
                 ['Fecha de préstamo', fecha_prestamo.strftime('%m-%d-%Y')],
@@ -954,7 +954,6 @@ def mostrar_reporte_cliente_especifico(conn):
                     COUNT(*) as total_prestamos,
                     SUM(CASE 
                         WHEN fecha_retorno IS NULL 
-                        AND fecha_prestamo IS NOT NULL 
                         THEN 1 
                         ELSE 0 
                     END) as prestamos_activos,
@@ -982,11 +981,15 @@ def mostrar_reporte_cliente_especifico(conn):
             print("\nNo hay clientes registrados en el sistema")
             return
         
+        # Encabezados más simples y sin saltos de línea
         headers = ["Clave", "Apellidos", "Nombres", "Teléfono", 
-                  "Total Préstamos", "Préstamos Activos"]
+                  "Total", "Activos", "F.Primer", "F.Último"]
         print("\n=== CLIENTES DISPONIBLES ===")
-        print(tabulate(clientes, headers=headers, tablefmt="simple_grid", 
-                      numalign="center", stralign="left"))
+        print(tabulate(clientes, 
+                      headers=headers, 
+                      tablefmt="simple_grid", 
+                      numalign="center", 
+                      stralign="left"))
         
         # Solicitar clave del cliente
         while True:
@@ -1051,8 +1054,8 @@ def mostrar_reporte_cliente_especifico(conn):
         prestamos = cursor.fetchall()
         
         if prestamos:
-            headers = ["Folio", "Fecha Préstamo", "Clave Unidad", "Rodada", 
-                      "Color", "Días Préstamo", "Fecha Retorno", "Estado"]
+            headers = ["Folio", "F.Préstamo", "Unidad", "Rodada", 
+                      "Color", "Días", "F.Retorno", "Estado"]
             print("\n=== HISTORIAL DE PRÉSTAMOS ===")
             print(tabulate(prestamos, headers=headers, tablefmt="simple_grid",
                          numalign="center", stralign="left"))
@@ -1541,26 +1544,41 @@ def solicitar_periodo():
     while True:
         try:
             print("\nIngrese el período a consultar (o 'cancelar' para salir)")
+            
+            # Validar fecha inicial
             fecha_inicio = input("Fecha inicial (mm-dd-yyyy): ")
             if fecha_inicio.lower() == 'cancelar':
                 return None, None
-            
-            fecha_fin = input("Fecha final (mm-dd-yyyy): ")
-            if fecha_fin.lower() == 'cancelar':
-                return None, None
-            
-            # Convertir las fechas al formato correcto
-            fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y").date()
-            fecha_fin = datetime.strptime(fecha_fin, "%m-%d-%Y").date()
-            
-            if fecha_fin < fecha_inicio:
-                print("Error: La fecha final no puede ser anterior a la fecha inicial")
+                
+            try:
+                fecha_inicio = datetime.strptime(fecha_inicio, "%m-%d-%Y").date()
+            except ValueError:
+                print("Error: Formato de fecha inicial inválido. Use mm-dd-yyyy")
                 continue
             
-            return fecha_inicio, fecha_fin
+            # Una vez que tenemos una fecha inicial válida, pedimos la fecha final
+            while True:
+                fecha_fin = input("Fecha final (mm-dd-yyyy): ")
+                if fecha_fin.lower() == 'cancelar':
+                    return None, None
+                    
+                try:
+                    fecha_fin = datetime.strptime(fecha_fin, "%m-%d-%Y").date()
+                    
+                    # Validar que la fecha final no sea anterior a la inicial
+                    if fecha_fin < fecha_inicio:
+                        print("Error: La fecha final no puede ser anterior a la fecha inicial")
+                        continue
+                        
+                    return fecha_inicio, fecha_fin
+                    
+                except ValueError:
+                    print("Error: Formato de fecha final inválido. Use mm-dd-yyyy")
+                    continue
             
-        except ValueError:
-            print("Error: Formato de fecha inválido. Use mm-dd-yyyy")
+        except Exception as e:
+            print(f"Error: {e}")
+            print("Por favor, intente nuevamente")
 
 def mostrar_prestamos_no_retornados(conn):
     try:
